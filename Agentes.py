@@ -85,7 +85,7 @@ class Vehiculo(Agent):
         self.pos = new_position
 
     def cambiar_direccion(self):
-        self.direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+        self.direccion = random.choice(["N", "S", "E", "O"])
 
 
     def step(self):
