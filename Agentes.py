@@ -47,7 +47,7 @@ class Celda:
 Clase vehiculo:
     - Atributos:
         - Velocidad: Random entre 1 y 5 donde 5 es la velocidad máxima
-        - Direccion: Random entre (1, 1), (-1, 0), (0, 1), (0, -1)
+        - Direccion: Random entre "N", "S", "E", "O" que indica la dirección del auto
         - Tipo de vehiculo: Random entre 1 y 4
         - Estado: Random entre 1 y 3, avanzando, en alto y estacionado
     - Metodos:
@@ -58,6 +58,35 @@ class Vehiculo(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
         self.direccion = random.choice(["N", "S", "E", "O"])  # Dirección inicial del auto
+        self.velocidad = random.randint(1, 5)  # Velocidad inicial del auto
+        self.tipo = random.randint(1, 4)  # Tipo de auto
+        self.estado = random.randint(1, 3)  # Estado inicial del auto
+
+    def moverse(self):
+        # Movimiento básico basado en la dirección
+        if self.estado != 1: # Si el auto no está avanzando, no se mueve
+            return
+        new_position = (self.pos[0] + self.direccion[0] * self.velocidad, self.pos[1] + self.direccion[1] * self.velocidad)
+
+        # Verificar si la nueva posición es válida
+        if self.model.grid.out_of_bounds(new_position):
+            self.cambiar_direccion()
+            return  # No moverse fuera del grid
+        
+        # Verificar si hay semáforo en rojo
+        agents_in_new_position = self.model.grid.get_cell_list_contents([new_position])
+        for agent in agents_in_new_position:
+            if isinstance(agent, Semaforo) and agent.state == "rojo":
+                self.estado = 2  # Cambia el estado a en alto
+                return
+
+        # Mover el vehículo a la nueva posición
+        self.model.grid.move_agent(self, new_position)
+        self.pos = new_position
+
+    def cambiar_direccion(self):
+        self.direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+
 
     def step(self):
         # Movimiento básico basado en la dirección
