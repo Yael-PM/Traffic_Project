@@ -1,0 +1,7 @@
+<<<<<<< HEAD
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+=======
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
+>>>>>>> 7b83fe7 (Simulacion Actividad Integradora A01749050)
