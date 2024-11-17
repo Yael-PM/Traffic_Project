@@ -50,13 +50,14 @@ class ModeloTrafico(Model):
         # Crear vehículos
         for i in range(1):
             direccion_inicial = (0, -1)  # Por ejemplo, hacia el este
-            vehiculo = Vehiculo(i, self, direccion_inicial, self.transitables, self.estacionamientos)
+            vehiculo = Vehiculo(i, self, direccion_inicial, self.transitables, self.estacionamientos, self.semaforos)
             x, y, direccion = random.choice(estacionamientos)
             self.grid.place_agent(vehiculo, (x, y))
             self.schedule.add(vehiculo)
 
             # Establecer un destino
             x2, y2, direccion = random.choice(estacionamientos)  # Ejemplo de destino
+            print(f"Estacionamiento de origen: {x, y}  Estacionamiento de destino: {x2, y2}")
             vehiculo.establecer_destino((x2, y2))
 
     # Agregar semáforos

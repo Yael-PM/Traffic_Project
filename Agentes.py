@@ -26,17 +26,35 @@ import random
 class Vehiculo(Agent):
     """Vehicle agent with speed, direction, type, state, and destination attributes."""
     
-    def __init__(self, unique_id, model, direccion, transitables, estacionamientos):
+    def __init__(self, unique_id, model, direccion, transitables, estacionamientos, semaforos):
         super().__init__(unique_id, model)
-        self.velocidad = random.randint(1, 5)  # Velocidad aleatoria entre 1 y 5
         self.direccion = direccion
-        self.tipo = random.randint(1, 4)  # Tipo de vehículo
         self.estado = 1
-        self.transitables = transitables
+        self.transitables = transitables  # Lista inicial de transitables
+        self.transitables += estacionamientos  # Agregar estacionamientos a transitables
+        self. semaforos = semaforos  # Lista de semáforos
         self.destino = None  # Destino final del vehículo
         self.ruta = []  # Almacena los pasos del camino hacia el destino
-        print(transitables.extend(estacionamientos))
         
+        
+    def detectar_semaforo(self):
+        """Detect if there's a traffic light in the direction the vehicle is moving."""
+        # Calcular la posición hacia la que el vehículo se dirige
+        next_pos = (self.pos[0] + self.direccion[0], self.pos[1] + self.direccion[1])
+        
+        # Buscar semáforos cercanos
+        for semaforo in self.semaforos:
+            sem_pos = (semaforo[0], semaforo[1])  # Posición del semáforo
+            sem_dir = semaforo[2]  # Dirección del semáforo ('H' o 'V')
+            
+            # Verificar si el semáforo está en la dirección del movimiento
+            if sem_pos == next_pos:
+                # Verificar el estado del semáforo (suponemos que el agente semáforo tiene un atributo state)
+                semaforo_agente = self.model.grid.get_cell_list_contents([sem_pos])[0]
+                if isinstance(semaforo_agente, Semaforo) and semaforo_agente.state == "rojo":
+                    print("Semáforo en rojo")
+                    return True  # El semáforo está en rojo y bloquea el paso
+        return False
 
     def establecer_destino(self, destino):
         """Set the destination for the vehicle and adjust direction."""
@@ -117,8 +135,15 @@ class Vehiculo(Agent):
     def moverse(self):
         """Move towards the next step in the route."""
         if self.estado == 1 and self.ruta:
-            siguiente_pos = self.ruta.pop(0)
+            siguiente_pos = self.ruta[0]
+            
+            # Verificar si hay un semáforo que detenga el paso
+            if self.detectar_semaforo():
+                return  # Detenerse si hay un semáforo en rojo
+            
+            # Si no hay semáforo bloqueando, moverse a la siguiente posición
             if siguiente_pos in [(x, y) for x, y, _ in self.transitables]:
+                self.ruta.pop(0)  # Avanzar en la ruta
                 self.model.grid.move_agent(self, siguiente_pos)
 
     def step(self):
