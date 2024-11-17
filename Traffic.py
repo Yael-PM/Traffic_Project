@@ -6,34 +6,92 @@ from mesa.visualization.ModularVisualization import ModularServer
 import random
 
 class Vehiculo(Agent):
-    """ Vehicle agent with speed, direction, type, and state attributes. """
-    
+    """Agente de vehículo con comportamiento para moverse entre estacionamientos, evitar obstáculos y respetar semáforos."""
+
     def __init__(self, unique_id, model, direccion):
         super().__init__(unique_id, model)
         self.velocidad = random.randint(1, 5)  # Velocidad aleatoria entre 1 y 5
         self.direccion = direccion
         self.tipo = random.randint(1, 4)  # Tipo de vehículo
         self.estado = 1
+        self.pos = None  # La posición del vehículo aún no está definida
+        self.destino = None  # El vehículo no tiene un destino asignado
+
+    def inicializar_posicion(self, posicion_inicial):
+        """ Asignar una posición inicial al vehículo. """
+        self.pos = posicion_inicial
+        self.model.grid.place_agent(self, self.pos)  # Coloca al vehículo en la rejilla
+    
+    def asignar_destino(self, destino):
+        """ Asigna un destino al vehículo. """
+        self.destino = destino
     
     def moverse(self):
         if self.estado == 1:  # Solo se mueve si está en estado "avanzando"
             nueva_pos = (self.pos[0] + self.direccion[0], self.pos[1] + self.direccion[1])
-            if nueva_pos in [(x, y) for x, y, d in transitables]:  # Verificar si es transitable
+            
+            # Verificar si la nueva posición es válida
+            if self.model.grid.is_cell_empty(nueva_pos) or self.es_transitable(nueva_pos):
+                # Mover al vehículo si la celda es vacía o transitables
                 self.model.grid.move_agent(self, nueva_pos)
-            else:  # Cambiar dirección si no puede avanzar
+                self.pos = nueva_pos  # Actualizar la posición del vehículo
+            else:
+                # Cambiar dirección si no puede avanzar
                 self.cambiar_direccion()
-    
+
     def cambiar_direccion(self):
+        """ Cambiar la dirección a una dirección válida. """
         posibles_direcciones = [
-            (dx, dy) for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]
-            if (self.pos[0] + dx, self.pos[1] + dy) in [(x, y) for x, y, d in transitables]
+            (dx, dy) 
+            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            if self.model.grid.is_cell_empty((self.pos[0] + dx, self.pos[1] + dy)) or self.es_transitable((self.pos[0] + dx, self.pos[1] + dy))
         ]
+        
         if posibles_direcciones:
             self.direccion = random.choice(posibles_direcciones)
-    
+
+    def buscar_destino(self):
+        """Busca un estacionamiento diferente al actual y ajusta su dirección."""
+        estacionamientos_disponibles = [
+            (x, y) for x, y, _ in self.model.estacionamientos if (x, y) != self.pos
+        ]
+        if estacionamientos_disponibles:
+            self.destino = random.choice(estacionamientos_disponibles)
+
+    def detectar_obstaculo(self, nueva_pos):
+        """Detecta si hay otro vehículo en la posición hacia la que se desea mover."""
+        agentes = self.model.grid.get_cell_list_contents([nueva_pos])
+        return any(isinstance(agente, Vehiculo) for agente in agentes)
+
+    def respetar_semaforo(self):
+        """Detiene el vehículo si hay un semáforo en rojo frente a él."""
+        siguiente_pos = (self.pos[0] + self.direccion[0], self.pos[1] + self.direccion[1])
+        agentes = self.model.grid.get_cell_list_contents([siguiente_pos])
+        for agente in agentes:
+            if isinstance(agente, Semaforo) and agente.color == "rojo":
+                self.estado = 0  # Detener el vehículo
+                return
+        self.estado = 1  # Continuar si no hay semáforo en rojo
+
+    def es_transitable(self, pos):
+        """Verifica si la posición es transitable."""
+        return pos in [(x, y) for x, y, _ in self.model.transitables]
+
     def step(self):
-        """ Perform one step in the simulation. """
+        """Ejecuta un paso en la simulación."""
+        self.respetar_semaforo()  # Primero verifica semáforos
+        if self.destino:  # Si tiene un destino asignado, ajusta la dirección
+            self.ajustar_direccion_hacia_destino()
         self.moverse()
+
+    def ajustar_direccion_hacia_destino(self):
+        """Ajusta la dirección para moverse hacia el destino utilizando una heurística simple."""
+        dx = self.destino[0] - self.pos[0]
+        dy = self.destino[1] - self.pos[1]
+        if abs(dx) > abs(dy):
+            self.direccion = (1 if dx > 0 else -1, 0)
+        else:
+            self.direccion = (0, 1 if dy > 0 else -1)
 
 """
 Clase semaforo:
@@ -43,16 +101,18 @@ Clase semaforo:
         - Cambiar de estado
 """
 class Semaforo(Agent):
+    estados = ["verde", "amarillo", "rojo"]
+
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        self.state = random.choice(["verde", "rojo"])  # Estado inicial del semáforo
+        self.state = random.choice(["verde", "rojo"])
         self.timer = 0
 
     def step(self):
-        # Cambiar de estado cada ciertos pasos
         self.timer += 1
-        if self.timer >= 5:  # Cambiar cada 5 pasos
-            self.state = "verde" if self.state == "rojo" else "rojo"
+        if self.timer >= 5:  # Ciclo de cambio de estado
+            current_index = self.estados.index(self.state)
+            self.state = self.estados[(current_index + 1) % len(self.estados)]
             self.timer = 0
 
 class Celda(Agent):
@@ -63,11 +123,18 @@ class Celda(Agent):
 
 class ModeloTrafico(Model):
     """Modelo que fija cuadros verdes en posiciones específicas del grid."""
-    def __init__(self, width, height, transitables):
+    def __init__(self, width, height, transitables, estacionamientos, intransitables, semaforos):
         super().__init__()
         self.grid = MultiGrid(width, height, torus=False)
         self.schedule = SimultaneousActivation(self)
-        
+        # Asignar las listas como atributos de la instancia
+        self.transitables = transitables
+        self.estacionamientos = estacionamientos
+        self.intransitables = intransitables
+        self.semaforos = semaforos
+        # Agregar semáforos
+        self.inicializar_semaforos(semaforos)
+
         # Agregar agentes en posiciones específicas
         for idx, (x, y, direccion) in enumerate(transitables):
             agente = Celda(idx, self, direccion)
@@ -87,7 +154,7 @@ class ModeloTrafico(Model):
         # Agregar autos al modelo
         for i in range(1):
             # Seleccionar una posición transitable aleatoria con dirección cardinal
-            x, y, direccion_cardinal = random.choice(transitables)
+            x, y, direccion_cardinal = random.choice(estacionamientos)
             
             # Traducir dirección cardinal a desplazamiento
             direccion = direcciones[direccion_cardinal]
@@ -99,15 +166,17 @@ class ModeloTrafico(Model):
             self.grid.place_agent(auto, (x, y))
             self.schedule.add(auto)
 
-        # Agregar semáforos
-        for i in range(len(semaforos)): 
-            semaforo = Semaforo(1 + i, self)
-            x, y, direccion = random.choice(semaforos)  
+    # Agregar semáforos
+    def inicializar_semaforos(self, semaforos):
+        for i, (x, y, _) in enumerate(semaforos):
+            semaforo = Semaforo(i, self)
             self.grid.place_agent(semaforo, (x, y))
             self.schedule.add(semaforo)
     
     def step(self):
         self.schedule.step()
+
+
 def agentPortrayal(agent):
     if isinstance(agent, Celda):
         
@@ -154,13 +223,14 @@ direcciones = {
     "N": (0, -1),  # N
     "S": (0, 1),   # S
     "E": (1, 0),   # E
-    "O": (-1, 0)   # O
+    "O": (-1, 0),   # O
+    "P": (0, 0)   # P
 }
 # Creacion del modelo
-model = ModeloTrafico(25, 25, transitables)
+model = ModeloTrafico(25, 25, transitables, estacionamientos, intransitables, semaforos)
 # Configuracion del CanvasGrid
 canvas_element = CanvasGrid(agentPortrayal, 25, 25, 500, 500)
 # Crear y correr el servidor
-server = ModularServer(ModeloTrafico, [canvas_element], "Cuadros Verdes", {"width": 25, "height": 25, "transitables": transitables})
-server.port = 8521 
+server = ModularServer(ModeloTrafico, [canvas_element], "Traffic Simulation", {"width": 25, "height": 25, "transitables": transitables, "estacionamientos": estacionamientos, "intransitables": intransitables, "semaforos": semaforos})
+server.port = 852
 server.launch() 
