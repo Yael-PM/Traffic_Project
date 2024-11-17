@@ -5,53 +5,35 @@ from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 import random
 
-"""
-Clase vehiculo:
-    - Atributos:
-        - Velocidad: Random entre 1 y 5 donde 5 es la velocidad máxima
-        - Direccion: Random entre (1, 1), (-1, 0), (0, 1), (0, -1)
-        - Tipo de vehiculo: Random entre 1 y 4
-        - Estado: Random entre 1 y 3, avanzando, en alto y estacionado
-    - Metodos:
-        - Moverse
-        - Cambiar de direccion
-"""
-transitables = [(1, 2, 'S'), (2, 2, 'O'), (3, 2, 'O'), (4, 2, 'O'), (5, 2, 'O'), (6, 2, 'O'), (7, 2, 'O'), (8, 2, 'O'), (9, 2, 'O'), (10, 2, 'O'), (11, 2, 'O'), (12, 2, 'O'), (13, 2, 'O'), (14, 2, 'O'), (15, 2, 'O'), (16, 2, 'O'), (17, 2, 'O'), (18, 2, 'O'), (19, 2, 'O'), (20, 2, 'O'), (21, 2, 'O'), (22, 2, 'O'), (23, 2, 'O'), (24, 2, 'O'), (1, 3, 'S'), (2, 3, 'O'), (3, 3, 'O'), (4, 3, 'O'), (5, 3, 'O'), (6, 3, 'O'), (7, 3, 'O'), (8, 3, 'O'), (9, 3, 'O'), (10, 3, 'O'), (11, 3, 'O'), (12, 3, 'O'), (13, 3, 'O'), (14, 3, 'O'), (15, 3, 'O'), (16, 3, 'O'), (17, 3, 'O'), (18, 3, 'O'), (19, 3, 'O'), (20, 3, 'O'), (21, 3, 'O'), (22, 3, 'O'), (23, 3, 'N'), (24, 3, 'N'), (1, 4, 'S'), (2, 4, 'S'), (7, 4, 'N'), (8, 4, 'N'), (13, 4, 'S'), (14, 4, 'S'), (15, 4, 'N'), (16, 4, 'N'), (23, 4, 'N'), (24, 4, 'N'), (1, 5, 'S'), (2, 5, 'S'), (7, 5, 'N'), (8, 5, 'N'), (13, 5, 'S'), (14, 5, 'S'), (15, 5, 'N'), (16, 5, 'N'), (23, 5, 'N'), (24, 5, 'N'), (1, 6, 'S'), (2, 6, 'S'), (7, 6, 'N'), (8, 6, 'N'), (13, 6, 'S'), (14, 6, 'S'), (15, 6, 'N'), (16, 6, 'N'), (23, 6, 'N'), (24, 6, 'N'), (1, 7, 'S'), (2, 7, 'S'), (7, 7, 'N'), (8, 7, 'N'), (9, 7, 'O'), (10, 7, 'O'), (11, 7, 'O'), (12, 7, 'O'), (13, 7, 'S'), (14, 7, 'S'), (15, 7, 'N'), (16, 7, 'N'), (23, 7, 'N'), (24, 7, 'N'), (1, 8, 'S'), (2, 8, 'S'), (7, 8, 'N'), (8, 8, 'N'), (9, 8, 'O'), (10, 8, 'O'), (11, 8, 'O'), (12, 8, 'O'), (13, 8, 'S'), (14, 8, 'S'), (15, 8, 'N'), (16, 8, 'N'), (17, 8, 'O'), (18, 8, 'O'), (19, 8, 'O'), (20, 8, 'O'), (21, 8, 'O'), (22, 8, 'O'), (23, 8, 'N'), (24, 8, 'N'), (1, 9, 'S'), (2, 9, 'S'), (7, 9, 'N'), (8, 9, 'N'), (13, 9, 'S'), (14, 9, 'S'), (15, 9, 'N'), (16, 9, 'N'), (17, 9, 'O'), (18, 9, 'O'), (19, 9, 'O'), (20, 9, 'O'), (21, 9, 'O'), (22, 9, 'O'), (23, 9, 'N'), (24, 9, 'N'), (1, 10, 'S'), (2, 10, 'S'), (7, 10, 'N'), (8, 10, 'N'), (13, 10, 'S'), (14, 10, 'S'), (15, 10, 'N'), (16, 10, 'N'), (23, 10, 'N'), (24, 10, 'N'), (1, 11, 'S'), (2, 11, 'S'), (7, 11, 'N'), (8, 11, 'N'), (13, 11, 'S'), (14, 11, 'S'), (15, 11, 'N'), (16, 11, 'N'), (23, 11, 'N'), (24, 11, 'N'), (1, 12, 'S'), (2, 12, 'S'), (7, 12, 'N'), (8, 12, 'N'), (13, 12, 'S'), (14, 12, 'S'), (15, 12, 'N'), (16, 12, 'N'), (23, 12, 'N'), (24, 12, 'N'), (1, 13, 'S'), (2, 13, 'S'), (7, 13, 'N'), (8, 13, 'N'), (13, 13, 'S'), (14, 13, 'S'), (15, 13, 'N'), (16, 13, 'N'), (23, 13, 'N'), (24, 13, 'N'), (1, 14, 'S'), (2, 14, 'S'), (3, 14, 'O'), (4, 14, 'O'), (5, 14, 'O'), (6, 14, 'O'), (7, 14, 'O'), (8, 14, 'O'), (9, 14, 'O'), (10, 14, 'O'), (11, 14, 'O'), (12, 14, 'O'), (13, 14, 'O'), (14, 14, 'O'), (15, 14, 'O'), (16, 14, 'N'), (17, 14, 'O'), (18, 14, 'O'), (19, 14, 'O'), (20, 14, 'O'), (21, 14, 'O'), (22, 14, 'O'), (23, 14, 'N'), (24, 14, 'N'), (1, 15, 'S'), (2, 15, 'S'), (3, 15, 'O'), (4, 15, 'O'), (5, 15, 'O'), (6, 15, 'O'), (7, 15, 'O'), (8, 15, 'O'), (9, 15, 'O'), (10, 15, 'O'), (11, 15, 'O'), (12, 15, 'O'), (13, 15, 'S'), (16, 15, 'N'), (17, 15, 'O'), (18, 15, 'O'), (19, 15, 'O'), (20, 15, 'O'), (21, 15, 'O'), (22, 15, 'O'), (23, 15, 'N'), (24, 15, 'N'), (1, 16, 'S'), (2, 16, 'S'), (3, 16, 'E'), (4, 16, 'E'), (5, 16, 'E'), (6, 16, 'E'), (7, 16, 'E'), (8, 16, 'E'), (9, 16, 'E'), (10, 16, 'E'), (11, 16, 'E'), (12, 16, 'E'), (13, 16, 'S'), (16, 16, 'N'), (17, 16, 'E'), (18, 16, 'E'), (19, 16, 'E'), (20, 16, 'E'), (21, 16, 'E'), (22, 16, 'E'), (23, 16, 'N'), (24, 16, 'N'), (1, 17, 'S'), (2, 17, 'S'), (3, 17, 'E'), (4, 17, 'E'), (5, 17, 'E'), (6, 17, 'E'), (7, 17, 'E'), (8, 17, 'E'), (9, 17, 'E'), (10, 17, 'E'), (11, 17, 'E'), (12, 17, 'E'), (13, 17, 'S'), (14, 17, 'E'), (15, 17, 'E'), (16, 17, 'E'), (17, 17, 'E'), (18, 17, 'E'), (19, 17, 'E'), (20, 17, 'E'), (21, 17, 'E'), (22, 17, 'E'), (23, 17, 'N'), (24, 17, 'N'), (1, 18, 'S'), (2, 18, 'S'), (7, 18, 'S'), (8, 18, 'S'), (13, 18, 'S'), (14, 18, 'S'), (15, 18, 'N'), (16, 18, 'N'), (19, 18, 'N'), (20, 18, 'N'), (23, 18, 'N'), (24, 18, 'N'), (1, 19, 'S'), (2, 19, 'S'), (7, 19, 'S'), (8, 19, 'S'), (13, 19, 'S'), (14, 19, 'S'), (15, 19, 'N'), (16, 19, 'N'), (19, 19, 'N'), (20, 19, 'N'), (23, 19, 'N'), (24, 19, 'N'), (1, 20, 'S'), (2, 20, 'S'), (3, 20, 'O'), (4, 20, 'O'), (5, 20, 'O'), (6, 20, 'O'), (7, 20, 'S'), (8, 20, 'S'), (9, 20, 'E'), (10, 20, 'E'), (11, 20, 'E'), (12, 20, 'E'), (13, 20, 'S'), (14, 20, 'S'), (15, 20, 'N'), (16, 20, 'N'), (19, 20, 'N'), (20, 20, 'N'), (23, 20, 'N'), (24, 20, 'N'), (1, 21, 'S'), (2, 21, 'S'), (3, 21, 'O'), (4, 21, 'O'), (5, 21, 'O'), (6, 21, 'O'), (7, 21, 'S'), (8, 21, 'S'), (9, 21, 'E'), (10, 21, 'E'), (11, 21, 'E'), (12, 21, 'E'), (13, 21, 'S'), (14, 21, 'S'), (15, 21, 'N'), (16, 21, 'N'), (19, 21, 'N'), (20, 21, 'N'), (23, 21, 'N'), (24, 21, 'N'), (1, 22, 'S'), (2, 22, 'S'), (7, 22, 'S'), (8, 22, 'S'), (13, 22, 'S'), (14, 22, 'S'), (15, 22, 'N'), (16, 22, 'N'), (19, 22, 'N'), (20, 22, 'N'), (23, 22, 'N'), (24, 22, 'N'), (1, 23, 'S'), (2, 23, 'S'), (7, 23, 'S'), (8, 23, 'S'), (13, 23, 'S'), (14, 23, 'S'), (15, 23, 'N'), (16, 23, 'N'), (19, 23, 'N'), (20, 23, 'N'), (23, 23, 'N'), (24, 23, 'N'), (1, 24, 'S'), (2, 24, 'S'), (3, 24, 'E'), (4, 24, 'E'), (5, 24, 'E'), (6, 24, 'E'), (7, 24, 'E'), (8, 24, 'E'), (9, 24, 'E'), (10, 24, 'E'), (11, 24, 'E'), (12, 24, 'E'), (13, 24, 'E'), (14, 24, 'E'), (15, 24, 'E'), (16, 24, 'E'), (17, 24, 'E'), (18, 24, 'E'), (19, 24, 'E'), (20, 24, 'E'), (21, 24, 'E'), (22, 24, 'E'), (23, 24, 'E'), (24, 24, 'N'), (1, 25, 'E'), (2, 25, 'E'), (3, 25, 'E'), (4, 25, 'E'), (5, 25, 'E'), (6, 25, 'E'), (7, 25, 'E'), (8, 25, 'E'), (9, 25, 'E'), (10, 25, 'E'), (11, 25, 'E'), (12, 25, 'E'), (13, 25, 'E'), (14, 25, 'E'), (15, 25, 'E'), (16, 25, 'E'), (17, 25, 'E'), (18, 25, 'E'), (19, 25, 'E'), (20, 25, 'E'), (21, 25, 'E'), (22, 25, 'E'), (23, 25, 'E'), (24, 25, 'N'), (4, 4, 'P'), (18, 4, 'P'), (11, 6, 'P'), (18, 4, 'P'), (21, 7, 'P'), (6, 8, 'P'), (9, 10, 'P'), (21, 10, 'P'), (3, 11, 'P'), (5, 13, 'P'), (11, 13, 'P'), (11, 18, 'P'), (4, 19, 'P'), (18, 19, 'P'), (18, 21, 'P'), (21, 21, 'P'), (5, 22, 'P'), (10, 23, 'P')]  
-estacionamientos = [(4, 4, 'P'), (18, 4, 'P'), (11, 6, 'P'), (18, 4, 'P'), (21, 7, 'P'), (6, 8, 'P'), (9, 10, 'P'), (21, 10, 'P'), (3, 11, 'P'), (5, 13, 'P'), (11, 13, 'P'), (11, 18, 'P'), (4, 19, 'P'), (18, 19, 'P'), (18, 21, 'P'), (21, 21, 'P'), (5, 22, 'E'), (10, 23, 'E')]
-no_transitable = [(3, 4, 'I'), (3, 5, 'I'), (3, 6, 'I'), (3, 7, 'I'), (3, 8, 'I'), (3, 9, 'I'), (3, 10, 'I'), (3, 12, 'I'), (3, 13, 'I'), (3, 18, 'I'), (3, 19, 'I'), (3, 22, 'I'), (3, 23, 'I'), (4, 5, 'I'), (4, 6, 'I'), (4, 7, 'I'), (4, 8, 'I'), (4, 9, 'I'), (4, 10, 'I'), (4, 11, 'I'), (4, 12, 'I'), (4, 13, 'I'), (4, 18, 'I'), (4, 22, 'I'), (4, 23, 'I'), (5, 4, 'I'), (5, 5, 'I'), (5, 6, 'I'), (5, 7, 'I'), (5, 8, 'I'), (5, 9, 'I'), (5, 10, 'I'), (5, 11, 'I'), (5, 12, 'I'), (5, 18, 'I'), (5, 19, 'I'), (5, 23, 'I'), (6, 4, 'I'), (6, 5, 'I'), (6, 6, 'I'), (6, 7, 'I'), (6, 9, 'I'), (6, 10, 'I'), (6, 11, 'I'), (6, 12, 'I'), (6, 13, 'I'), (6, 18, 'I'), (6, 19, 'I'), (6, 22, 'I'), (6, 23, 'I'), (9, 4, 'I'), (9, 5, 'I'), (9, 6, 'I'), (9, 9, 'I'), (9, 11, 'I'), (9, 12, 'I'), (9, 13, 'I'), (9, 18, 'I'), (9, 19, 'I'), (9, 22, 'I'), (9, 23, 'I'), (10, 4, 'I'), (10, 5, 'I'), (10, 6, 'I'), (10, 9, 'I'), (10, 10, 'I'), (10, 11, 'I'), (10, 12, 'I'), (10, 13, 'I'), (10, 18, 'I'), (10, 19, 'I'), (10, 22, 'I'), (11, 4, 'I'), (11, 5, 'I'), (11, 9, 'I'), (11, 10, 'I'), (11, 11, 'I'), (11, 12, 'I'), (11, 19, 'I'), (11, 22, 'I'), (11, 23, 'I'), (12, 4, 'I'), (12, 5, 'I'), (12, 6, 'I'), (12, 9, 'I'), (12, 10, 'I'), (12, 11, 'I'), (12, 12, 'I'), (12, 13, 'I'), (12, 18, 'I'), (12, 19, 'I'), (12, 22, 'I'), (12, 23, 'I'), (14, 15, 'I'), (14, 16, 'I'), (15, 15, 'I'), (15, 16, 'I'), (17, 4, 'I'), (17, 5, 'I'), (17, 6, 'I'), (17, 7, 'I'), (17, 10, 'I'), (17, 11, 'I'), (17, 12, 'I'), (17, 13, 'I'), (17, 18, 'I'), (17, 19, 'I'), (17, 20, 'I'), (17, 21, 'I'), (17, 22, 'I'), (17, 23, 'I'), (18, 5, 'I'), (18, 6, 'I'), (18, 7, 'I'), (18, 10, 'I'), (18, 11, 'I'), (18, 12, 'I'), (18, 13, 'I'), (18, 18, 'I'), (18, 20, 'I'), (18, 22, 'I'), (18, 23, 'I'), (19, 4, 'I'), (19, 5, 'I'), (19, 6, 'I'), (19, 7, 'I'), (19, 10, 'I'), (19, 11, 'I'), (19, 12, 'I'), (19, 13, 'I'), (20, 4, 'I'), (20, 5, 'I'), (20, 6, 'I'), (20, 7, 'I'), (20, 10, 'I'), (20, 11, 'I'), (20, 12, 'I'), (20, 13, 'I'), (21, 4, 'I'), (21, 5, 'I'), (21, 6, 'I'), (21, 11, 'I'), (21, 12, 'I'), (21, 13, 'I'), (21, 18, 'I'), (21, 19, 'I'), (21, 20, 'I'), (21, 22, 'I'), (21, 23, 'I'), (22, 4, 'I'), (22, 5, 'I'), (22, 6, 'I'), (22, 7, 'I'), (22, 10, 'I'), (22, 11, 'I'), (22, 12, 'I'), (22, 13, 'I'), (22, 18, 'I'), (22, 19, 'I'), (22, 20, 'I'), (22, 21, 'I'), (22, 22, 'I'), (22, 23, 'I')]
-semaforos = []
-
 class Vehiculo(Agent):
     """ Vehicle agent with speed, direction, type, and state attributes. """
     
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model, direccion):
         super().__init__(unique_id, model)
-        self.speed = random.randint(1, 5)  # Speed between 1 and 5
-        self.direction = random.choice([(1, 1), (-1, 0), (0, 1), (0, -1)])  # Random direction
-        self.vehicle_type = random.randint(1, 4)  # Random vehicle type (1-4)
-        self.state = random.randint(1, 3)  # Random state (1: moving, 2: idle, 3: parked)
+        self.velocidad = random.randint(1, 5)  # Velocidad aleatoria entre 1 y 5
+        self.direccion = direccion
+        self.tipo = random.randint(1, 4)  # Tipo de vehículo
+        self.estado = 1
     
-    def move(self):
-        """ Move the vehicle in the current direction. """
-        if self.state == 1:  # If the vehicle is moving
-            x, y = self.pos
-            dx, dy = self.direction
-            new_pos = (x + dx * self.speed, y + dy * self.speed)
-
-            # Ensure the vehicle moves within the grid bounds
-            if self.model.grid.is_cell_empty(new_pos):
-                self.model.grid.move_agent(self, new_pos)
+    def moverse(self):
+        if self.estado == 1:  # Solo se mueve si está en estado "avanzando"
+            nueva_pos = (self.pos[0] + self.direccion[0], self.pos[1] + self.direccion[1])
+            if nueva_pos in [(x, y) for x, y, d in transitables]:  # Verificar si es transitable
+                self.model.grid.move_agent(self, nueva_pos)
+            else:  # Cambiar dirección si no puede avanzar
+                self.cambiar_direccion()
     
-    def change_direction(self):
-        """ Change direction randomly. """
-        self.direction = random.choice([(1, 1), (-1, 0), (0, 1), (0, -1)])
+    def cambiar_direccion(self):
+        posibles_direcciones = [
+            (dx, dy) for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            if (self.pos[0] + dx, self.pos[1] + dy) in [(x, y) for x, y, d in transitables]
+        ]
+        if posibles_direcciones:
+            self.direccion = random.choice(posibles_direcciones)
     
     def step(self):
         """ Perform one step in the simulation. """
-        self.move()
-        # Add logic to change direction or state if necessary (optional)
-        if random.random() < 0.1:  # Example: 10% chance to change direction
-            self.change_direction()
+        self.moverse()
 
 """
 Clase semaforo:
@@ -73,86 +55,68 @@ class Semaforo(Agent):
             self.state = "verde" if self.state == "rojo" else "rojo"
             self.timer = 0
 
-"""
-
-"""
 class Celda(Agent):
-    """Agente que representa un cuadro fijo."""
-    def __init__(self, unique_id, model, direction, tipo):
+    """Agente que representa un cuadro fijo de color verde."""
+    def __init__(self, unique_id, model, direction):
         super().__init__(unique_id, model)
         self.direccion = direction
-        self.tipo = tipo  # Define el tipo de celda
 
-"""
-"""
-class Parking(Agent):
-    """Estacionamiento en el grid."""
-    def __init__(self, model, pos):
-        super().__init__(model)
-        self.pos = pos
-    
-    def step(self):
-        pass  # Los estacionamientos no necesitan hacer nada, solo se dibujan
-
-class TraficoModel(Model):
-    """Modelo que incluye vehículos, semáforos y celdas transitables."""
-    def __init__(self, N, width, height, transitables, estacionamientos, no_transitable):
+class ModeloTrafico(Model):
+    """Modelo que fija cuadros verdes en posiciones específicas del grid."""
+    def __init__(self, width, height, transitables):
         super().__init__()
-        self.num_autos = N
         self.grid = MultiGrid(width, height, torus=False)
         self.schedule = SimultaneousActivation(self)
-
-        # Agregar celdas para transitables tipo 1
-        for idx, (x, y, direccion) in enumerate(transitables):
-            agente = Celda(idx, self, direccion, "tipo1")
-            self.grid.place_agent(agente, (x, y))
-            self.schedule.add(agente)
-
-        # Agregar celdas para transitables tipo 2
-        for idx, (x, y, direccion) in enumerate(estacionamientos):
-            agente = Celda(idx + len(transitables), self, direccion, "tipo2")
-            self.grid.place_agent(agente, (x, y))
-            self.schedule.add(agente)
-
-        # Agregar celdas para transitables tipo 3
-        for idx, (x, y, direccion) in enumerate(no_transitable):
-            agente = Celda(idx + len(transitables) + len(estacionamientos), self, direccion, "tipo3")
-            self.grid.place_agent(agente, (x, y))
-            self.schedule.add(agente)
-
         
-        # Agregar autos
-        for i in range(self.num_autos):
-            auto = Vehiculo(i, self)
-            # Seleccionar una posición transitable aleatoria con dirección
-            x, y, direccion = random.choice(transitables)  # Asegúrate de que 'transitables' tenga tripletas (x, y, dirección)
-            auto.direccion = direccion  # Almacena la dirección en el auto
-            self.grid.place_agent(auto, (x, y))  # Coloca el auto en la rejilla usando solo (x, y)
-            self.schedule.add(auto)  # Agrega el auto al scheduler
+        # Agregar agentes en posiciones específicas
+        for idx, (x, y, direccion) in enumerate(transitables):
+            agente = Celda(idx, self, direccion)
+            self.grid.place_agent(agente, (x, y))
+            self.schedule.add(agente)
+
+        for idx, (x, y, direccion) in enumerate(estacionamientos):
+            agente = Celda(idx, self, direccion)
+            self.grid.place_agent(agente, (x, y))
+            self.schedule.add(agente)
+
+        for idx, (x, y, direccion) in enumerate(intransitables):
+            agente = Celda(idx, self, direccion)
+            self.grid.place_agent(agente, (x, y))
+            self.schedule.add(agente)
+
+        # Agregar autos al modelo
+        for i in range(1):
+            # Seleccionar una posición transitable aleatoria con dirección cardinal
+            x, y, direccion_cardinal = random.choice(transitables)
+            
+            # Traducir dirección cardinal a desplazamiento
+            direccion = direcciones[direccion_cardinal]
+            
+            # Crear el auto y asignar dirección
+            auto = Vehiculo(i, self, direccion)
+            
+            # Colocar el auto en la rejilla y agregarlo al scheduler
+            self.grid.place_agent(auto, (x, y))
+            self.schedule.add(auto)
 
         # Agregar semáforos
-        for i in range(1):  # Agregar 1 semáforo (puedes agregar más)
-            semaforo = Semaforo(self.num_autos + i, self)
-            x, y, direccion = random.choice(transitables)  # Asegúrate de que 'transitables' tenga tripletas (x, y, dirección)
+        for i in range(len(semaforos)): 
+            semaforo = Semaforo(1 + i, self)
+            x, y, direccion = random.choice(semaforos)  
             self.grid.place_agent(semaforo, (x, y))
             self.schedule.add(semaforo)
-
+    
     def step(self):
-        """Avanzar un paso en la simulación."""
         self.schedule.step()
-
 def agentPortrayal(agent):
-    """Definir cómo se dibujan los agentes en el canvas."""
     if isinstance(agent, Celda):
-        # Asignar color según el tipo
-        if agent.tipo == "tipo1":
-            color = "white"
-        elif agent.tipo == "tipo2":
+        
+        if agent.direccion == "P":
             color = "yellow"
-        elif agent.tipo == "tipo3":
+        elif agent.direccion == "I":
             color = "blue"
         else:
-            color = "gray"  # Color predeterminado para tipos desconocidos
+            color = "white"
         
         return {
             "Shape": "rect",
@@ -161,14 +125,6 @@ def agentPortrayal(agent):
             "Color": color,
             "w": 1,
             "h": 1
-        }
-    elif isinstance(agent, Vehiculo):
-        return {
-            "Shape": "circle",
-            "Filled": "true",
-            "Layer": 1,
-            "Color": "purple",
-            "r": 1
         }
     elif isinstance(agent, Semaforo):
         color = "red" if agent.state == "rojo" else "green" if agent.state == "verde" else "yellow"
@@ -180,20 +136,31 @@ def agentPortrayal(agent):
             "w": 2,
             "h": 1
         }
-
-# Crear el modelo
-model = TraficoModel(1, 26, 26, transitables, estacionamientos, no_transitable)
-for _ in range(10):  # Run for 10 steps
-    model.step()
-
-canvas_element = CanvasGrid(agentPortrayal, 26, 26, 500, 500)
-server = ModularServer(
-    TraficoModel,
-    [canvas_element],
-    "Simulación de Tráfico",
-    {"N": 1, "width": 26, "height": 26, "transitables": transitables, "estacionamientos": estacionamientos, "no_transitable": no_transitable}
-)
-
-# Ejecutar el servidor
-server.port = 852
-server.launch()
+    elif isinstance(agent, Vehiculo):
+        return {
+            "Shape": "circle",
+            "Filled": "true",
+            "Layer": 1,
+            "Color": "purple",
+            "r": 1
+        }
+    
+# Coordenadas específicas para la parte transitable, semáforos y estacionamientos del grid
+transitables = [(1, 24, 'S'), (2, 24, 'O'), (3, 24, 'O'), (4, 24, 'O'), (5, 24, 'O'), (6, 24, 'O'), (7, 24, 'O'), (8, 24, 'O'), (9, 24, 'O'), (10, 24, 'O'), (11, 24, 'O'), (12, 24, 'O'), (13, 24, 'O'), (14, 24, 'O'), (15, 24, 'O'), (16, 24, 'O'), (17, 24, 'O'), (18, 24, 'O'), (19, 24, 'O'), (20, 24, 'O'), (21, 24, 'O'), (22, 24, 'O'), (23, 24, 'O'), (24, 24, 'O'), (1, 23, 'S'), (2, 23, 'O'), (3, 23, 'O'), (4, 23, 'O'), (5, 23, 'O'), (6, 23, 'O'), (7, 23, 'O'), (8, 23, 'O'), (9, 23, 'O'), (10, 23, 'O'), (11, 23, 'O'), (12, 23, 'O'), (13, 23, 'O'), (14, 23, 'O'), (15, 23, 'O'), (16, 23, 'O'), (17, 23, 'O'), (18, 23, 'O'), (19, 23, 'O'), (20, 23, 'O'), (21, 23, 'O'), (22, 23, 'O'), (23, 23, 'N'), (24, 23, 'N'), (1, 22, 'S'), (2, 22, 'S'), (7, 22, 'N'), (8, 22, 'N'), (13, 22, 'S'), (14, 22, 'S'), (15, 22, 'N'), (16, 22, 'N'), (23, 22, 'N'), (24, 22, 'N'), (1, 21, 'S'), (2, 21, 'S'), (7, 21, 'N'), (8, 21, 'N'), (13, 21, 'S'), (14, 21, 'S'), (15, 21, 'N'), (16, 21, 'N'), (23, 21, 'N'), (24, 21, 'N'), (1, 20, 'S'), (2, 20, 'S'), (7, 20, 'N'), (8, 20, 'N'), (13, 20, 'S'), (14, 20, 'S'), (15, 20, 'N'), (16, 20, 'N'), (23, 20, 'N'), (24, 20, 'N'), (1, 19, 'S'), (2, 19, 'S'), (7, 19, 'N'), (8, 19, 'N'), (9, 19, 'O'), (10, 19, 'O'), (11, 19, 'O'), (12, 19, 'O'), (13, 19, 'S'), (14, 19, 'S'), (15, 19, 'N'), (16, 19, 'N'), (23, 19, 'N'), (24, 19, 'N'), (1, 18, 'S'), (2, 18, 'S'), (7, 18, 'N'), (8, 18, 'N'), (9, 18, 'O'), (10, 18, 'O'), (11, 18, 'O'), (12, 18, 'O'), (13, 18, 'S'), (14, 18, 'S'), (15, 18, 'N'), (16, 18, 'N'), (17, 18, 'O'), (18, 18, 'O'), (19, 18, 'O'), (20, 18, 'O'), (21, 18, 'O'), (22, 18, 'O'), (23, 18, 'N'), (24, 18, 'N'), (1, 17, 'S'), (2, 17, 'S'), (7, 17, 'N'), (8, 17, 'N'), (13, 17, 'S'), (14, 17, 'S'), (15, 17, 'N'), (16, 17, 'N'), (17, 17, 'O'), (18, 17, 'O'), (19, 17, 'O'), (20, 17, 'O'), (21, 17, 'O'), (22, 17, 'O'), (23, 17, 'N'), (24, 17, 'N'), (1, 16, 'S'), (2, 16, 'S'), (7, 16, 'N'), (8, 16, 'N'), (13, 16, 'S'), (14, 16, 'S'), (15, 16, 'N'), (16, 16, 'N'), (23, 16, 'N'), (24, 16, 'N'), (1, 15, 'S'), (2, 15, 'S'), (7, 15, 'N'), (8, 15, 'N'), (13, 15, 'S'), (14, 15, 'S'), (15, 15, 'N'), (16, 15, 'N'), (23, 15, 'N'), (24, 15, 'N'), (1, 14, 'S'), (2, 14, 'S'), (7, 14, 'N'), (8, 14, 'N'), (13, 14, 'S'), (14, 14, 'S'), (15, 14, 'N'), (16, 14, 'N'), (23, 14, 'N'), (24, 14, 'N'), (1, 13, 'S'), (2, 13, 'S'), (7, 13, 'N'), (8, 13, 'N'), (13, 13, 'S'), (14, 13, 'S'), (15, 13, 'N'), (16, 13, 'N'), (23, 13, 'N'), (24, 13, 'N'), (1, 12, 'S'), (2, 12, 'S'), (3, 12, 'O'), (4, 12, 'O'), (5, 12, 'O'), (6, 12, 'O'), (7, 12, 'O'), (8, 12, 'O'), (9, 12, 'O'), (10, 12, 'O'), (11, 12, 'O'), (12, 12, 'O'), (13, 12, 'O'), (14, 12, 'O'), (15, 12, 'O'), (16, 12, 'N'), (17, 12, 'O'), (18, 12, 'O'), (19, 12, 'O'), (20, 12, 'O'), (21, 12, 'O'), (22, 12, 'O'), (23, 12, 'N'), (24, 12, 'N'), (1, 11, 'S'), (2, 11, 'S'), (3, 11, 'O'), (4, 11, 'O'), (5, 11, 'O'), (6, 11, 'O'), (7, 11, 'O'), (8, 11, 'O'), (9, 11, 'O'), (10, 11, 'O'), (11, 11, 'O'), (12, 11, 'O'), (13, 11, 'S'), (16, 11, 'N'), (17, 11, 'O'), (18, 11, 'O'), (19, 11, 'O'), (20, 11, 'O'), (21, 11, 'O'), (22, 11, 'O'), (23, 11, 'N'), (24, 11, 'N'), (1, 10, 'S'), (2, 10, 'S'), (3, 10, 'E'), (4, 10, 'E'), (5, 10, 'E'), (6, 10, 'E'), (7, 10, 'E'), (8, 10, 'E'), (9, 10, 'E'), (10, 10, 'E'), (11, 10, 'E'), (12, 10, 'E'), (13, 10, 'S'), (16, 10, 'N'), (17, 10, 'E'), (18, 10, 'E'), (19, 10, 'E'), (20, 10, 'E'), (21, 10, 'E'), (22, 10, 'E'), (23, 10, 'N'), (24, 10, 'N'), (1, 9, 'S'), (2, 9, 'S'), (3, 9, 'E'), (4, 9, 'E'), (5, 9, 'E'), (6, 9, 'E'), (7, 9, 'E'), (8, 9, 'E'), (9, 9, 'E'), (10, 9, 'E'), (11, 9, 'E'), (12, 9, 'E'), (13, 9, 'S'), (14, 9, 'E'), (15, 9, 'E'), (16, 9, 'E'), (17, 9, 'E'), (18, 9, 'E'), (19, 9, 'E'), (20, 9, 'E'), (21, 9, 'E'), (22, 9, 'E'), (23, 9, 'N'), (24, 9, 'N'), (1, 8, 'S'), (2, 8, 'S'), (7, 8, 'S'), (8, 8, 'S'), (13, 8, 'S'), (14, 8, 'S'), (15, 8, 'N'), (16, 8, 'N'), (19, 8, 'N'), (20, 8, 'N'), (23, 8, 'N'), (24, 8, 'N'), (1, 7, 'S'), (2, 7, 'S'), (7, 7, 'S'), (8, 7, 'S'), (13, 7, 'S'), (14, 7, 'S'), (15, 7, 'N'), (16, 7, 'N'), (19, 7, 'N'), (20, 7, 'N'), (23, 7, 'N'), (24, 7, 'N'), (1, 6, 'S'), (2, 6, 'S'), (3, 6, 'O'), (4, 6, 'O'), (5, 6, 'O'), (6, 6, 'O'), (7, 6, 'S'), (8, 6, 'S'), (9, 6, 'E'), (10, 6, 'E'), (11, 6, 'E'), (12, 6, 'E'), (13, 6, 'S'), (14, 6, 'S'), (15, 6, 'N'), (16, 6, 'N'), (19, 6, 'N'), (20, 6, 'N'), (23, 6, 'N'), (24, 6, 'N'), (1, 5, 'S'), (2, 5, 'S'), (3, 5, 'O'), (4, 5, 'O'), (5, 5, 'O'), (6, 5, 'O'), (7, 5, 'S'), (8, 5, 'S'), (9, 5, 'E'), (10, 5, 'E'), (11, 5, 'E'), (12, 5, 'E'), (13, 5, 'S'), (14, 5, 'S'), (15, 5, 'N'), (16, 5, 'N'), (19, 5, 'N'), (20, 5, 'N'), (23, 5, 'N'), (24, 5, 'N'), (1, 4, 'S'), (2, 4, 'S'), (7, 4, 'S'), (8, 4, 'S'), (13, 4, 'S'), (14, 4, 'S'), (15, 4, 'N'), (16, 4, 'N'), (19, 4, 'N'), (20, 4, 'N'), (23, 4, 'N'), (24, 4, 'N'), (1, 3, 'S'), (2, 3, 'S'), (7, 3, 'S'), (8, 3, 'S'), (13, 3, 'S'), (14, 3, 'S'), (15, 3, 'N'), (16, 3, 'N'), (19, 3, 'N'), (20, 3, 'N'), (23, 3, 'N'), (24, 3, 'N'), (1, 2, 'S'), (2, 2, 'S'), (3, 2, 'E'), (4, 2, 'E'), (5, 2, 'E'), (6, 2, 'E'), (7, 2, 'E'), (8, 2, 'E'), (9, 2, 'E'), (10, 2, 'E'), (11, 2, 'E'), (12, 2, 'E'), (13, 2, 'E'), (14, 2, 'E'), (15, 2, 'E'), (16, 2, 'E'), (17, 2, 'E'), (18, 2, 'E'), (19, 2, 'E'), (20, 2, 'E'), (21, 2, 'E'), (22, 2, 'E'), (23, 2, 'E'), (24, 2, 'N'), (1, 1, 'E'), (2, 1, 'E'), (3, 1, 'E'), (4, 1, 'E'), (5, 1, 'E'), (6, 1, 'E'), (7, 1, 'E'), (8, 1, 'E'), (9, 1, 'E'), (10, 1, 'E'), (11, 1, 'E'), (12, 1, 'E'), (13, 1, 'E'), (14, 1, 'E'), (15, 1, 'E'), (16, 1, 'E'), (17, 1, 'E'), (18, 1, 'E'), (19, 1, 'E'), (20, 1, 'E'), (21, 1, 'E'), (22, 1, 'E'), (23, 1, 'E'), (24, 1, 'N')]  
+semaforos = [(1, 7, 'H'), (7, 3, 'H'), (19, 8, 'H'), (7, 17, 'H'), (7, 22, 'H'), (3, 6, 'V'), (6, 2, 'V'), (18, 10, 'V'), (9, 19, 'V'), (9, 24, 'V')]
+estacionamientos = [(4, 22, 'P'), (18, 22, 'P'), (11, 20, 'P'), (6, 18, 'P'), (21, 19, 'P'), (9, 16, 'P'), (21, 16, 'P'), (3, 15, 'P'), (5, 13, 'P'), (11, 13, 'P'), (11, 8, 'P'), (4, 7, 'P'), (18, 7, 'P'), (5, 4, 'P'), (18, 5, 'P'), (21, 5, 'P'), (10, 3, 'P')] 
+intransitables = [(3, 3, 'I'), (3, 4, 'I'), (3, 7, 'I'), (3, 8, 'I'), (3, 13, 'I'), (3, 14, 'I'), (3, 16, 'I'), (3, 17, 'I'), (3, 18, 'I'), (3, 19, 'I'), (3, 20, 'I'), (3, 21, 'I'), (3, 22, 'I'), (4, 3, 'I'), (4, 4, 'I'), (4, 8, 'I'), (4, 13, 'I'), (4, 14, 'I'), (4, 15, 'I'), (4, 16, 'I'), (4, 17, 'I'), (4, 18, 'I'), (4, 19, 'I'), (4, 20, 'I'), (4, 21, 'I'), (5, 3, 'I'), (5, 7, 'I'), (5, 8, 'I'), (5, 14, 'I'), (5, 15, 'I'), (5, 16, 'I'), (5, 17, 'I'), (5, 18, 'I'), (5, 19, 'I'), (5, 20, 'I'), (5, 21, 'I'), (5, 22, 'I'), (6, 3, 'I'), (6, 4, 'I'), (6, 7, 'I'), (6, 8, 'I'), (6, 13, 'I'), (6, 14, 'I'), (6, 15, 'I'), (6, 16, 'I'), (6, 17, 'I'), (6, 19, 'I'), (6, 20, 'I'), (6, 21, 'I'), (6, 22, 'I'), (9, 3, 'I'), (9, 4, 'I'), (9, 7, 'I'), (9, 8, 'I'), (9, 13, 'I'), (9, 14, 'I'), (9, 15, 'I'), (9, 17, 'I'), (9, 20, 'I'), (9, 21, 'I'), (9, 22, 'I'), (10, 4, 'I'), (10, 7, 'I'), (10, 8, 'I'), (10, 13, 'I'), (10, 14, 'I'), (10, 15, 'I'), (10, 16, 'I'), (10, 17, 'I'), (10, 20, 'I'), (10, 21, 'I'), (10, 22, 'I'), (11, 3, 'I'), (11, 4, 'I'), (11, 7, 'I'), (11, 14, 'I'), (11, 15, 'I'), (11, 16, 'I'), (11, 17, 'I'), (11, 21, 'I'), (11, 22, 'I'), (12, 3, 'I'), (12, 4, 'I'), (12, 7, 'I'), (12, 8, 'I'), (12, 13, 'I'), (12, 14, 'I'), (12, 15, 'I'), (12, 16, 'I'), (12, 17, 'I'), (12, 20, 'I'), (12, 21, 'I'), (12, 22, 'I'), (14, 10, 'I'), (14, 11, 'I'), (15, 10, 'I'), (15, 11, 'I'), (17, 3, 'I'), (17, 4, 'I'), (17, 5, 'I'), (17, 6, 'I'), (17, 7, 'I'), (17, 8, 'I'), (17, 13, 'I'), (17, 14, 'I'), (17, 15, 'I'), (17, 16, 'I'), (17, 19, 'I'), (17, 20, 'I'), (17, 21, 'I'), (17, 22, 'I'), (18, 3, 'I'), (18, 4, 'I'), (18, 6, 'I'), (18, 8, 'I'), (18, 13, 'I'), (18, 14, 'I'), (18, 15, 'I'), (18, 16, 'I'), (18, 19, 'I'), (18, 20, 'I'), (18, 21, 'I'), (19, 13, 'I'), (19, 14, 'I'), (19, 15, 'I'), (19, 16, 'I'), (19, 19, 'I'), (19, 20, 'I'), (19, 21, 'I'), (19, 22, 'I'), (20, 13, 'I'), (20, 14, 'I'), (20, 15, 'I'), (20, 16, 'I'), (20, 19, 'I'), (20, 20, 'I'), (20, 21, 'I'), (20, 22, 'I'), (21, 3, 'I'), (21, 4, 'I'), (21, 6, 'I'), (21, 7, 'I'), (21, 8, 'I'), (21, 13, 'I'), (21, 14, 'I'), (21, 15, 'I'), (21, 20, 'I'), (21, 21, 'I'), (21, 22, 'I'), (22, 3, 'I'), (22, 4, 'I'), (22, 5, 'I'), (22, 6, 'I'), (22, 7, 'I'), (22, 8, 'I'), (22, 13, 'I'), (22, 14, 'I'), (22, 15, 'I'), (22, 16, 'I'), (22, 19, 'I'), (22, 20, 'I'), (22, 21, 'I'), (22, 22, 'I')]
+direcciones = {
+    "N": (0, -1),  # N
+    "S": (0, 1),   # S
+    "E": (1, 0),   # E
+    "O": (-1, 0)   # O
+}
+# Creacion del modelo
+model = ModeloTrafico(25, 25, transitables)
+# Configuracion del CanvasGrid
+canvas_element = CanvasGrid(agentPortrayal, 25, 25, 500, 500)
+# Crear y correr el servidor
+server = ModularServer(ModeloTrafico, [canvas_element], "Cuadros Verdes", {"width": 25, "height": 25, "transitables": transitables})
+server.port = 8521 
+server.launch() 
