@@ -4,6 +4,7 @@ from mesa.space import MultiGrid
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 import random
+from queue import PriorityQueue
 
 """
 Clase Vehiculo:
@@ -20,9 +21,6 @@ Clase Vehiculo:
         - Validar_Semaforo(pos siguiente)
         - Step()
 """
-from queue import PriorityQueue
-import random
-
 class Vehiculo(Agent):
     """Vehicle agent with speed, direction, type, state, and destination attributes."""
     
