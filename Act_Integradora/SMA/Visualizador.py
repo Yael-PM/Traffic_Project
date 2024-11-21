@@ -3,7 +3,6 @@ from mesa.visualization.ModularVisualization import ModularServer
 from Agentes import Vehiculo, Semaforo, Celda
 from Model import ModeloTrafico
 
-
 def agentPortrayal(agent):
     if isinstance(agent, Celda):
         
