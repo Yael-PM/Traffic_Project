@@ -22,6 +22,8 @@ from mesa.space import MultiGrid
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 import random
+from queue import PriorityQueue
+
 
 """
 Clase Vehiculo:
@@ -68,7 +70,66 @@ Métodos:
     step(): Realiza un paso del movimiento del peatón, verificando todas las condiciones necesarias.
 """
 class Peaton(Agent):
-    pass
+    def __init__(self, unique_id, model, destino, transitables, semaforos):
+        super().__init__(unique_id,model)
+        self.destino = destino
+        self.transitables = transitables
+        self.semaforos = semaforos
+        self.ruta = self.calcular_ruta(destino)
+
+    def calcular_ruta(self, destino):
+        if destino not in [(x, y) for x, y, _ in self.transitables]:
+            return []
+        # A* algorithm
+        start = self.pos
+        open_set = PriorityQueue()
+        open_set.put((0, start))
+        came_from = {}
+        g_score = {start: 0}
+        f_score = {start: self.distancia(start, destino)}
+
+        while not open_set.empty():
+            _, current = open_set.get()
+            
+            if current == destino:
+                return self.reconstruir_camino(came_from, current)
+
+            for dx, dy, _ in self.transitables_direcciones(current):
+                neighbor = (current[0] + dx, current[1] + dy)
+                if neighbor not in [(x, y) for x, y, _ in self.transitables]:
+                    continue
+                tentative_g_score = g_score[current] + 1
+                
+                if tentative_g_score < g_score.get(neighbor, float('inf')):
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    f_score[neighbor] = tentative_g_score + self.distancia(neighbor, destino)
+                    open_set.put((f_score[neighbor], neighbor))
+        return []  # No se encontró un camino
+    
+    def detectar_semaforo(self, pos_siguiente):
+        for semaforo in self.semaforos:
+            sem_pos = (semaforo[0],semaforo[1])
+            if pos_siguiente == sem_pos:
+                semaforo_agente = self.model.grid.get_cell_list_contents([sem_pos][0])
+                if isinstance(semaforo_agente, SemaforoPeatonal) and semaforo_agente.state == "rojo":
+                    return True
+        return False
+
+
+    def moverse(self):
+        if self.ruta:
+            siguiente_pos = self.ruta[0]
+
+            if self.detectar_semaforo(siguiente_pos):
+                return
+            
+            self.ruta.pop(0)
+            self.model.grid.move_agent(self, siguiente_pos)
+    
+    def step(self):
+        self.moverse()
+
 
 """
 Clase SemaforoPeatonal:
@@ -89,7 +150,38 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoPeatonal(Agent):
-    pass
+    def __init__(self, unique_id, model, radio_detencion=3, tiempo_verde=5):
+        super().__init__(unique_id,model)
+        self.estado = "rojo"
+        self.tiempo_rojo = radio_detencion
+        self.tiempo_verde = tiempo_verde
+        self.contador = 0
+    def detectar_peatones(self):
+        vecinos = self.model.grid.get_neighbors(
+            self.pos,
+            moore=True,
+            include_center=False,
+            radius=self.radio_detection
+        )
+        for agente in vecinos:
+            if isinstance(agente,Peaton):
+                return True
+        return False
+    
+    def cambiar_estado(self):
+        if self.estado == "rojo" and self.detectar_peatones():
+            self.estado = "verde"
+            self.contador = 0
+        elif self.estado == "verde" and self.contador >= self.tiempo_verde:
+            self.estado = "rojo"
+            self.contador = 0
+
+    def step(self):
+        if self.estado == "verde":
+            self.contador += 1
+        self.cambiar_estado()
+
+
 
 """
 Clase SemaforoVehicular:
