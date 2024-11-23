@@ -67,7 +67,19 @@ class ModeloTrafico(Model):
         # Crear agentes para las celdas intransitables
         for x, y in banquetas:
             # Crear el agente Celda para cada coordenada (x, y)
-            celda = Celda((x, y), self, None, color="gray", layer=2)
+            celda = Celda((x, y), self, None, color="gray", layer=3)
+            self.grid.place_agent(celda, (x, y))
+            self.schedule.add(celda)
+
+        for x, y in semaforosV:
+            # Crear el agente Celda para cada coordenada (x, y)
+            celda = Celda((x, y), self, None, color="red", layer=4)
+            self.grid.place_agent(celda, (x, y))
+            self.schedule.add(celda)
+        
+        for x, y in semaforosP:
+            # Crear el agente Celda para cada coordenada (x, y)
+            celda = Celda((x, y), self, None, color="red", layer=5)
             self.grid.place_agent(celda, (x, y))
             self.schedule.add(celda)
     
