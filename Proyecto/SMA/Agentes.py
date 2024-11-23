@@ -70,15 +70,16 @@ Métodos:
     step(): Realiza un paso del movimiento del peatón, verificando todas las condiciones necesarias.
 """
 class Peaton(Agent):
-    def __init__(self, unique_id, model, destino, transitables, semaforos):
+    def __init__(self, unique_id, model, destino, transitables, semaforos, color="red"):
         super().__init__(unique_id,model)
         self.destino = destino
         self.transitables = transitables
         self.semaforos = semaforos
+        self.color = color
         self.ruta = self.calcular_ruta(destino)
 
     def calcular_ruta(self, destino):
-        if destino not in [(x, y) for x, y, _ in self.transitables]:
+        if destino not in  self.transitables:
             return []
         # A* algorithm
         start = self.pos
@@ -94,7 +95,7 @@ class Peaton(Agent):
             if current == destino:
                 return self.reconstruir_camino(came_from, current)
 
-            for dx, dy, _ in self.transitables_direcciones(current):
+            for dx, dy, _ in [(-1,0),(1,0),(0,-1),(0,1)]: # ACA TENGO DUDA
                 neighbor = (current[0] + dx, current[1] + dy)
                 if neighbor not in [(x, y) for x, y, _ in self.transitables]:
                     continue
@@ -107,27 +108,41 @@ class Peaton(Agent):
                     open_set.put((f_score[neighbor], neighbor))
         return []  # No se encontró un camino
     
-    def detectar_semaforo(self, pos_siguiente):
-        for semaforo in self.semaforos:
-            sem_pos = (semaforo[0],semaforo[1])
-            if pos_siguiente == sem_pos:
-                semaforo_agente = self.model.grid.get_cell_list_contents([sem_pos][0])
-                if isinstance(semaforo_agente, SemaforoPeatonal) and semaforo_agente.state == "rojo":
-                    return True
-        return False
-
-
+    def reconstruir_camino(self, viene_de,current):
+        """"Recontruye el camino desde el origen al destino"""
+        total_path = [current]
+        while current in viene_de:
+            current = viene_de[current]
+            total_path.append(current)
+        total_path.reverse()
+        return total_path
+    
+    def distancia(self, a, b):
+        """Calcula la distancia ente dos puntos"""
+        return abs(a[0]-b[0] + abs(a[1]-b[1]))
+    
     def moverse(self):
+        """"Movimiento del peaton"""
         if self.ruta:
             siguiente_pos = self.ruta[0]
+            if not self.detectar_semaforo(siguiente_pos):
+                self.model.grid.move_agent(self, siguiente_pos)
+                self.ruta.pop(0)
+            if not self.ruta:
+                self.ruta = self.calcular_ruta(self.destino)
 
-            if self.detectar_semaforo(siguiente_pos):
-                return
-            
-            self.ruta.pop(0)
-            self.model.grid.move_agent(self, siguiente_pos)
+    def detectar_semaforo(self, pos_siguiente):
+        """"Detecta si existe un semaforo en la posicion siguiente y verifica su estado (rojo o verde)"""
+        for semaforo_pos in self.semaforos:
+            if pos_siguiente == semaforo_pos:
+                semaforo_agente = self.model.grid.get_cell_list_contents([pos_siguiente][0])
+                if isinstance(semaforo_agente, SemaforoPeatonal):
+                    return semaforo_agente.estado == "rojo"
+        return False
+
     
     def step(self):
+        """Ejecuta el paso del agente peaton"""
         self.moverse()
 
 
@@ -150,18 +165,19 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoPeatonal(Agent):
-    def __init__(self, unique_id, model, radio_detencion=3, tiempo_verde=5):
+    def __init__(self, unique_id, model, pos, radio_detencion=3):
         super().__init__(unique_id,model)
+        self.pos = pos
         self.estado = "rojo"
-        self.tiempo_rojo = radio_detencion
-        self.tiempo_verde = tiempo_verde
-        self.contador = 0
+        self.radio_detencion = radio_detencion
+
     def detectar_peatones(self):
+        """"Detecta peatones cerca """
         vecinos = self.model.grid.get_neighbors(
             self.pos,
-            moore=True,
-            include_center=False,
-            radius=self.radio_detection
+            moore=False,
+            include_center=True,
+            radius=self.radio_detencion
         )
         for agente in vecinos:
             if isinstance(agente,Peaton):
@@ -169,16 +185,12 @@ class SemaforoPeatonal(Agent):
         return False
     
     def cambiar_estado(self):
-        if self.estado == "rojo" and self.detectar_peatones():
+        if self.detectar_peatones():
             self.estado = "verde"
-            self.contador = 0
-        elif self.estado == "verde" and self.contador >= self.tiempo_verde:
+        else:
             self.estado = "rojo"
-            self.contador = 0
 
     def step(self):
-        if self.estado == "verde":
-            self.contador += 1
         self.cambiar_estado()
 
 
