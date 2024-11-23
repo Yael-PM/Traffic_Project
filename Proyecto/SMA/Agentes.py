@@ -213,8 +213,16 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoVehicular(Agent):
-    pass
+    def __init__(self, unique_id, model, direccion):
+        object.__init__(unique_id, model)
+        self.direccion = direccion
+        self.state = "red"  # Estado inicial del semáforo
+        self.pos = None  # Posición del semáforo en el grid
+        self.unique_id = unique_id  # Identificador único del semáforo
 
+    def step(self):
+        # Lógica para cambiar el estado del semáforo
+        pass
 """
 Clase Celda:
 
