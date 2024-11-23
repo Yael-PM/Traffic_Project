@@ -1,5 +1,5 @@
 """
-Clase que define los agentes del sistema
+Módulo que define los agentes del sistema
 Autores: 
     - Emiliano Caballero Mendoza A017
     - Yael Octavio Pérez Méndez A01799842
@@ -13,6 +13,7 @@ Con las clases:
     -> Peatón
     -> Semáforo vehicular
     -> Semáforo peatonal
+    -> Celda
 """
 
 # Importamos las librerías necesarias
@@ -213,6 +214,21 @@ Métodos:
 """
 class SemaforoVehicular(Agent):
     pass
+
+"""
+Clase Celda:
+
+Nos sirve para representar un cuadro fijo en el grid.
+"""
+class Celda(Agent):
+    """Agente que representa un cuadro fijo en el grid."""
+    def __init__(self, unique_id, model, direction, color, layer):
+        super().__init__(unique_id, model)
+        self.direccion = direction
+        self.color = color  # Color inicial de la celda
+        self.layer = layer  # Capa del agente
+
+
 
 
 
