@@ -52,7 +52,48 @@ Métodos:
     step(): Realiza un paso del movimiento del vehículo, verificando todas las condiciones necesarias.
 """
 class Vehiculo(Agent):
-    pass
+    def __init__(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
+        super().__init__(unique_id, model)
+        self.origen = origen
+        self.destino = destino
+        self.semaforosV = semaforosV
+        self.transitables = transitables
+        self.estacionamientos = estacionamientos
+
+    def validar_direccion(self):
+        """
+        Verifica si existe una celda transitable adyacente al origen del vehículo.
+        Retorna la celda a la que se puede mover o None si no hay celdas transitables.
+        """
+        x, y = self.origen
+        adyacentes = [
+            (x - 1, y), (x + 1, y),  # Coordenadas arriba y abajo
+            (x, y - 1), (x, y + 1),  # Coordenadas izquierda y derecha
+        ]
+
+        for coordenada in adyacentes:
+            for direccion, celdas in self.transitables.items():
+                if coordenada in celdas:
+                    print(f"Puedo moverme a la coordenada {coordenada} en dirección {direccion}.")
+                    return coordenada  # Retorna la primera celda válida encontrada
+        print(f"No hay direcciones transitables desde el origen {self.origen}.")
+        return None
+
+    def step(self):
+        """
+        Método ejecutado en cada paso de la simulación.
+        El agente valida direcciones, se mueve y actualiza su posición.
+        """
+        nueva_posicion = self.validar_direccion()
+        if nueva_posicion:
+            # Mover el agente a la nueva posición
+            self.model.grid.move_agent(self, nueva_posicion)
+            # Actualizar el origen a la nueva posición
+            self.origen = nueva_posicion
+            print(f"Me moví a la posición {self.origen}.")
+        else:
+            print(f"El agente {self.unique_id} no puede moverse en este paso.")
+
 
 """
 Clase Peaton:
@@ -71,19 +112,21 @@ Métodos:
     step(): Realiza un paso del movimiento del peatón, verificando todas las condiciones necesarias.
 """
 class Peaton(Agent):
-    def __init__(self, unique_id, model, destino, transitables, semaforos, color="red"):
-        super().__init__(unique_id,model)
+    def __init__(self, unique_id, model, origen, destino):
+        super().__init__(unique_id, model)
+        self.origen = origen
         self.destino = destino
-        self.transitables = transitables
-        self.semaforos = semaforos
-        self.color = color
         self.ruta = self.calcular_ruta(destino)
+        self.color = "blue"  # Color para representar al peatón en el mapa
 
     def calcular_ruta(self, destino):
-        if destino not in  self.transitables:
+        """
+        Calcula la ruta desde el origen hasta el destino usando un algoritmo simple de A*.
+        """
+        if destino is None or self.origen is None:
             return []
-        # A* algorithm
-        start = self.pos
+        
+        start = self.origen
         open_set = PriorityQueue()
         open_set.put((0, start))
         came_from = {}
@@ -92,58 +135,45 @@ class Peaton(Agent):
 
         while not open_set.empty():
             _, current = open_set.get()
-            
+
             if current == destino:
                 return self.reconstruir_camino(came_from, current)
 
-            for dx, dy, _ in [(-1,0),(1,0),(0,-1),(0,1)]: # ACA TENGO DUDA
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 neighbor = (current[0] + dx, current[1] + dy)
-                if neighbor not in [(x, y) for x, y, _ in self.transitables]:
+                if neighbor not in self.model.banquetas:  # Solo moverse por banquetas
                     continue
-                tentative_g_score = g_score[current] + 1
                 
+                tentative_g_score = g_score[current] + 1
                 if tentative_g_score < g_score.get(neighbor, float('inf')):
                     came_from[neighbor] = current
                     g_score[neighbor] = tentative_g_score
                     f_score[neighbor] = tentative_g_score + self.distancia(neighbor, destino)
                     open_set.put((f_score[neighbor], neighbor))
+
         return []  # No se encontró un camino
-    
-    def reconstruir_camino(self, viene_de,current):
-        """"Recontruye el camino desde el origen al destino"""
+
+    def reconstruir_camino(self, came_from, current):
+        """Reconstruye el camino desde el origen al destino."""
         total_path = [current]
-        while current in viene_de:
-            current = viene_de[current]
+        while current in came_from:
+            current = came_from[current]
             total_path.append(current)
         total_path.reverse()
         return total_path
-    
+
     def distancia(self, a, b):
-        """Calcula la distancia ente dos puntos"""
-        return abs(a[0]-b[0] + abs(a[1]-b[1]))
-    
+        """Calcula la distancia Manhattan entre dos puntos."""
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
     def moverse(self):
-        """"Movimiento del peaton"""
+        """Movimiento del peatón siguiendo la ruta."""
         if self.ruta:
-            siguiente_pos = self.ruta[0]
-            if not self.detectar_semaforo(siguiente_pos):
-                self.model.grid.move_agent(self, siguiente_pos)
-                self.ruta.pop(0)
-            if not self.ruta:
-                self.ruta = self.calcular_ruta(self.destino)
+            siguiente_pos = self.ruta.pop(0)
+            self.model.grid.move_agent(self, siguiente_pos)
 
-    def detectar_semaforo(self, pos_siguiente):
-        """"Detecta si existe un semaforo en la posicion siguiente y verifica su estado (rojo o verde)"""
-        for semaforo_pos in self.semaforos:
-            if pos_siguiente == semaforo_pos:
-                semaforo_agente = self.model.grid.get_cell_list_contents([pos_siguiente][0])
-                if isinstance(semaforo_agente, SemaforoPeatonal):
-                    return semaforo_agente.estado == "rojo"
-        return False
-
-    
     def step(self):
-        """Ejecuta el paso del agente peaton"""
+        """Ejecución de un paso del agente."""
         self.moverse()
 
 
@@ -195,7 +225,6 @@ class SemaforoPeatonal(Agent):
         self.cambiar_estado()
 
 
-
 """
 Clase SemaforoVehicular:
 
@@ -222,14 +251,24 @@ Nos sirve para representar un cuadro fijo en el grid.
 """
 class Celda(Agent):
     """Agente que representa un cuadro fijo en el grid."""
-    def __init__(self, unique_id, model, direction, color, layer):
+    
+    def __init__(self, unique_id, model, direction, color, layer, width=1, height=1):
+        """
+        Inicializa un agente Celda.
+        
+        Args:
+            unique_id: Identificador único del agente.
+            model: El modelo donde se encuentra el agente.
+            direction: Dirección de la celda.
+            color: Color de la celda.
+            layer: Capa de la celda.
+            shape: Forma de la celda, por defecto es "rect".
+            width: Ancho de la celda, por defecto es 1.
+            height: Alto de la celda, por defecto es 1.
+        """
         super().__init__(unique_id, model)
         self.direccion = direction
         self.color = color  # Color inicial de la celda
         self.layer = layer  # Capa del agente
-
-
-
-
-
-
+        self.width = width  # Ancho de la celda
+        self.height = height  # Alto de la celda
