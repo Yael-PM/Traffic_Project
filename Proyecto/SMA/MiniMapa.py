@@ -55,6 +55,8 @@ model_params = {
     "semaforosP": semaforosP,
     "transitables": transitables,
     "intransitables": intransitables,
+    "banquetas": banquetas,
+    "estacionamientos": estacionamientos
 }
 server = ModularServer(ModeloTrafico, [canvas_element], "Traffic Simulation", model_params)
 server.port = 852
