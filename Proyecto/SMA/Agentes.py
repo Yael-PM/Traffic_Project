@@ -4,7 +4,7 @@ Autores:
     - Emiliano Caballero Mendoza A017
     - Yael Octavio Pérez Méndez A01799842
     - José Eduardo Rosas Ponciano A017
-    - Manuel Olmos A017
+    - Manuel Olmos A01750748
 
 Este modulo contiene la definición de los agentes que se utilizarán en el sistema de tráfico
 
@@ -20,8 +20,8 @@ Con las clases:
 from mesa import Agent, Model
 from mesa.time import SimultaneousActivation
 from mesa.space import MultiGrid
-from mesa.visualization.modules import CanvasGrid
-from mesa.visualization.ModularVisualization import ModularServer
+#from mesa.visualization.modules import CanvasGrid
+#from mesa.visualization.ModularVisualization import ModularServer
 import random
 from queue import PriorityQueue
 
@@ -222,14 +222,16 @@ Nos sirve para representar un cuadro fijo en el grid.
 """
 class Celda(Agent):
     """Agente que representa un cuadro fijo en el grid."""
-    def __init__(self, unique_id, model, direction, color, layer):
-        super().__init__(unique_id, model)
+    def __init__(self, unique_id, model, direction=None, color="green", layer=1):
+        # Manually call object.__init__ to avoid super() issues in Mesa's Agent class
+        object.__init__(self)
+        
+        # Initialize attributes expected by Agent
+        self.unique_id = unique_id
+        self.model = model
+        
+        # Set additional attributes specific to Celda
         self.direccion = direction
-        self.color = color  # Color inicial de la celda
-        self.layer = layer  # Capa del agente
-
-
-
-
-
-
+        self.color = color
+        self.layer = layer
+        self.pos = None
