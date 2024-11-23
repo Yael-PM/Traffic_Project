@@ -1,7 +1,3 @@
-"""
-Este módulo es el encargado de definir el modelo del sistema de tráfico, 
-el cual contiene la lógica del sistema y los agentes que interactúan en él.
-"""
 from mesa import Model
 from mesa.time import SimultaneousActivation
 from mesa.space import MultiGrid

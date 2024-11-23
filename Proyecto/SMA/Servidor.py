@@ -1,5 +1,36 @@
-intransitables = [(4, 22, 'P'), (18, 22, 'P'), (11, 20, 'P'), (6, 18, 'P'), (21, 19, 'P'), (9, 16, 'P'), (21, 16, 'P'), (3, 15, 'P'), (5, 13, 'P'), (11, 13, 'P'), (11, 8, 'P'), (4, 7, 'P'), (18, 7, 'P'), (5, 4, 'P'), (18, 5, 'P'), (21, 5, 'P'), (10, 3, 'P')] 
+from flask import Flask, jsonify
+import json, logging, os
+from model import BoidFlockers
 
-b = [(x, y) for x, y, direccion in intransitables]
+port = 8000
+app = Flask(__name__, static_url_path='')
 
-print(b)
+boids = BoidFlockers(
+    20,
+    100,
+    100,
+    1,
+    10,
+    2,
+    0.03,
+    0.015,
+    0.05
+)
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    return jsonify([{'message': 'Hello, World!'}])
+
+@app.route('/datos', methods=['GET', 'POST'])
+def getPositions():
+    boids.step()
+    pos=boids.getPositions()
+
+    p = []
+    for po in pos:
+        Point = {'x': po[0], 'y': po[1]}
+        p.append(Point)
+    return jsonify({'points': p})
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=port, debug=True)

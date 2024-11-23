@@ -1,55 +1,91 @@
-using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
-
-// La clase Conexion se encarga de recibir datos de un cliente a través de una conexión TCP.
-// Para ello, se configura un servidor en la dirección
-// Lo unico que falta es el procesamiento de los datos recibidos
-// Para ello se debe implementar el metodo ProcesarDatos
+using UnityEngine.Networking;
 
 public class Conexion : MonoBehaviour
 {
-    private TcpListener server;
-    private TcpClient client;
-    private NetworkStream stream;
+    // Start is called before the first frame update
 
-    void Start()
-    {
-        // Configurar el servidor
-        server = new TcpListener(IPAddress.Parse("127.0.0.1"), 65432);
-        server.Start();
-        Debug.Log("Servidor iniciado en 127.0.0.1:65432");
-    }
+    const int NUM_OBJECTS = 20;
+    List<GameObject> cars;
+    [SerializeField]
+    List<List<Vector3>> positions;
 
-    void Update()
+    float timeToUpdate = 1.0f;
+    private float timer;
+    public float dt;
+
+    IEnumerator RequestPositions()
     {
-        if (server.Pending())
+        WWWForm form = new WWWForm();
+        string url = "http://localhost:8000/datos";
+        using (UnityWebRequest www = UnityWebRequest.Post(url, form))
         {
-            client = server.AcceptTcpClient();
-            stream = client.GetStream();
 
-            byte[] buffer = new byte[1024];
-            int bytesRead = stream.Read(buffer, 0, buffer.Length);
-            string data = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            www.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
 
-            // Procesar los datos recibidos
-            ProcesarDatos(data);
+            yield return www.SendWebRequest();
+            if (www.result == UnityWebRequest.Result.ConnectionError)
+            {
+                Debug.Log(www.error);
+            }
+            else
+            {
+                string msg = www.downloadHandler.text;
+                Points step = Points.CreateFromJSON(msg);
 
-            stream.Close();
-            client.Close();
+                if (positions.Count == 0)
+                {
+                    //GameObject car = GameObject.Find("Eduardo_Car");
+                    List<Vector3> p = new List<Vector3>();
+                    foreach (Point pos in step.points)
+                    {
+                        //GameObject car = GameObject.Find("Eduardo_Car");
+                        GameObject car = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        Vector3 myP = new Vector3(pos.x, 0, pos.z);
+                        car.transform.position = myP;
+                        p.Add(myP);
+                        cars.Add(car);
+                    }
+                    positions.Add(p);
+                }
+                else
+                {
+                    List<Vector3> p = new List<Vector3>();
+                    for (int i = 0; i < step.points.Count; i++)
+                    {
+                        //GameObject car = GameObject.Find("Eduardo_Car");
+                        GameObject car = cars[i];
+                        Point pos = step.points[i];
+                        Vector3 myP = new Vector3(pos.x, 0, pos.z);
+                        car.transform.position = myP;
+                        p.Add(myP);
+                        cars.Add(car);
+                    }
+                    positions.Add(p);
+                }
+            }
         }
     }
 
-    void ProcesarDatos(string data)
+    void Start()
     {
-        // Aquí puedes procesar los datos recibidos y actualizar la escena de Unity
-        Debug.Log("Datos recibidos: " + data);
+        timer = timeToUpdate;
+        positions = new List<List<Vector3>>();
+        cars = new List<GameObject>();
+        StartCoroutine(RequestPositions());
     }
 
-    void OnApplicationQuit()
+    // Update is called once per frame
+    void Update()
     {
-        server.Stop();
+        timer -= Time.deltaTime;
+        if (timer <= 0)
+        {
+            timer = timeToUpdate;
+            StartCoroutine(RequestPositions());
+        }
     }
 }
