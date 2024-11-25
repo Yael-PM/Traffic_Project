@@ -25,7 +25,6 @@ from mesa.space import MultiGrid
 import random
 from queue import PriorityQueue
 
-
 """
 Clase Vehiculo:
 
@@ -59,41 +58,139 @@ class Vehiculo(Agent):
         self.semaforosV = semaforosV
         self.transitables = transitables
         self.estacionamientos = estacionamientos
+        self.ruta = self.generar_ruta()  # Calculamos la ruta inicial
+        self.visitadas = set()  # Conjunto para almacenar celdas visitadas
 
-    def validar_direccion(self):
+    def generar_ruta(self):
         """
-        Verifica si existe una celda transitable adyacente al origen del vehículo.
-        Retorna la celda a la que se puede mover o None si no hay celdas transitables.
+        Genera una ruta desde el origen hasta el destino respetando las direcciones transitables.
+        Retorna una lista de coordenadas que representan la ruta calculada.
+        """
+        origen = self.origen
+        destino = self.destino
+        transitables = self.transitables
+
+        # Usamos una cola de prioridad para almacenar las celdas por explorar
+        frontera = PriorityQueue()
+        frontera.put((0, origen))  # (prioridad, celda)
+
+        # Diccionarios para rastrear rutas y costos
+        came_from = {}  # De dónde venimos
+        cost_so_far = {}  # Costo acumulado hasta cada celda
+        came_from[origen] = None
+        cost_so_far[origen] = 0
+
+        while not frontera.empty():
+            _, current = frontera.get()
+
+            # Si alcanzamos el destino, reconstruimos la ruta
+            if current == destino:
+                ruta = []
+                while current:
+                    ruta.append(current)
+                    current = came_from[current]
+                ruta.reverse()
+                print(f"Ruta generada para el vehículo {self.unique_id}: {ruta}")
+                return ruta
+
+            # Explorar las celdas adyacentes transitables
+            x, y = current
+            adyacentes = [
+                ((x - 1, y), "N"),  # Norte
+                ((x + 1, y), "S"),  # Sur
+                ((x, y - 1), "O"),  # Oeste
+                ((x, y + 1), "E"),  # Este
+            ]
+
+            for next_celda, direccion in adyacentes:
+                if next_celda in transitables.get(direccion, []):  # Respetar las direcciones
+                    new_cost = cost_so_far[current] + 1  # Costo acumulado
+                    if next_celda not in cost_so_far or new_cost < cost_so_far[next_celda]:
+                        cost_so_far[next_celda] = new_cost
+                        priority = new_cost + abs(next_celda[0] - destino[0]) + abs(next_celda[1] - destino[1])
+                        frontera.put((priority, next_celda))
+                        came_from[next_celda] = current
+
+        # Si no se encuentra ruta, retorna None
+        print(f"No se pudo encontrar una ruta desde {origen} hasta {destino}.")
+        return None
+
+    def moverse(self, coordenada):
+        """
+        Mueve al agente a la coordenada especificada si está en las celdas transitables.
+
+        Parámetros:
+            coordenada (tuple): La nueva posición a la que se moverá.
+        """
+        if coordenada not in self.visitadas:
+            # Mueve al agente en el modelo
+            self.model.grid.move_agent(self, coordenada)
+            self.origen = coordenada  # Actualiza el origen
+            self.visitadas.add(coordenada)  # Marca la celda como visitada
+            print(f"Me moví directamente a la posición {self.origen}.")
+        else:
+            print(f"La posición {coordenada} ya fue visitada, no me moveré.")
+
+    def buscar_celda_transitable(self):
+        """
+        Busca la celda transitable más cercana al destino desde la posición actual.
+        Si no encuentra una celda adyacente válida, devuelve cualquier celda transitable no visitada.
         """
         x, y = self.origen
         adyacentes = [
-            (x - 1, y), (x + 1, y),  # Coordenadas arriba y abajo
-            (x, y - 1), (x, y + 1),  # Coordenadas izquierda y derecha
+            ((x - 1, y), "N"),  # Norte
+            ((x + 1, y), "S"),  # Sur
+            ((x, y - 1), "O"),  # Oeste
+            ((x, y + 1), "E"),  # Este
         ]
 
-        for coordenada in adyacentes:
-            for direccion, celdas in self.transitables.items():
-                if coordenada in celdas:
-                    print(f"Puedo moverme a la coordenada {coordenada} en dirección {direccion}.")
-                    return coordenada  # Retorna la primera celda válida encontrada
-        print(f"No hay direcciones transitables desde el origen {self.origen}.")
-        return None
+        # Buscar celdas adyacentes transitables
+        transitables_adyacentes = [
+            coord for coord, direccion in adyacentes
+            if coord not in self.visitadas and coord in self.transitables.get(direccion, [])
+        ]
+
+        if transitables_adyacentes:
+            # Ordenar por distancia Manhattan al destino
+            transitables_adyacentes.sort(key=lambda coord: abs(coord[0] - self.destino[0]) + abs(coord[1] - self.destino[1]))
+            return transitables_adyacentes[0]
+
+        # Si no hay celdas adyacentes, buscar cualquier celda transitable
+        for direccion, celdas in self.transitables.items():
+            for celda in celdas:
+                if celda not in self.visitadas:
+                    return celda
+
+        return None  # Si no hay celdas disponibles
 
     def step(self):
         """
         Método ejecutado en cada paso de la simulación.
-        El agente valida direcciones, se mueve y actualiza su posición.
+        El agente sigue la ruta generada hacia el destino.
         """
-        nueva_posicion = self.validar_direccion()
-        if nueva_posicion:
-            # Mover el agente a la nueva posición
-            self.model.grid.move_agent(self, nueva_posicion)
-            # Actualizar el origen a la nueva posición
-            self.origen = nueva_posicion
-            print(f"Me moví a la posición {self.origen}.")
-        else:
-            print(f"El agente {self.unique_id} no puede moverse en este paso.")
+        if self.origen == self.destino:
+            print(f"El vehículo {self.unique_id} ha llegado a su destino {self.destino}.")
+            return  # Detener el movimiento si ya llegó al destino
 
+        # Si la ruta no existe o está vacía, intenta regenerarla
+        if not self.ruta:
+            self.ruta = self.generar_ruta()
+            if not self.ruta:
+                # Si no se pudo generar ruta, buscar una celda transitable
+                print(f"No se pudo encontrar una ruta, buscando una celda transitable.")
+                siguiente_celda = self.buscar_celda_transitable()
+                if siguiente_celda:
+                    self.moverse(siguiente_celda)
+                    # Intentar recalcular la ruta después de moverse
+                    self.ruta = self.generar_ruta()
+                else:
+                    print(f"No se encontró ninguna celda transitable para el agente {self.unique_id}.")
+                return
+
+        # Moverse a la siguiente celda en la ruta
+        if self.ruta:
+            siguiente_celda = self.ruta.pop(0)
+            self.moverse(siguiente_celda)
 
 """
 Clase Peaton:
@@ -124,8 +221,9 @@ class Peaton(Agent):
         Calcula la ruta desde el origen hasta el destino usando un algoritmo simple de A*.
         """
         if destino is None or self.origen is None:
+            print(f"Peatón {self.unique_id}: Origen o destino inválidos.") 
             return []
-        
+
         start = self.origen
         open_set = PriorityQueue()
         open_set.put((0, start))
@@ -137,13 +235,16 @@ class Peaton(Agent):
             _, current = open_set.get()
 
             if current == destino:
-                return self.reconstruir_camino(came_from, current)
+                print(f"Peatón {self.unique_id}: Ruta encontrada.")
+                return self.reconstruir_camino(came_from,current)
 
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 neighbor = (current[0] + dx, current[1] + dy)
-                if neighbor not in self.model.banquetas:  # Solo moverse por banquetas
+
+                if neighbor not in self.model.banquetas :
+                    print(f"Peatón {self.unique_id}: Celda vecina {neighbor} no es transitable.") 
                     continue
-                
+
                 tentative_g_score = g_score[current] + 1
                 if tentative_g_score < g_score.get(neighbor, float('inf')):
                     came_from[neighbor] = current
@@ -151,6 +252,7 @@ class Peaton(Agent):
                     f_score[neighbor] = tentative_g_score + self.distancia(neighbor, destino)
                     open_set.put((f_score[neighbor], neighbor))
 
+        print(f"Peatón {self.unique_id} no encontró una ruta válida.")
         return []  # No se encontró un camino
 
     def reconstruir_camino(self, came_from, current):
@@ -168,14 +270,40 @@ class Peaton(Agent):
 
     def moverse(self):
         """Movimiento del peatón siguiendo la ruta."""
-        if self.ruta:
-            siguiente_pos = self.ruta.pop(0)
+        if not self.ruta:
+            print(f"Peatón {self.unique_id} no tiene ruta para moverse.")
+            self.ruta = self.calcular_ruta(self.destino)
+            if not self.ruta:
+                print(f"Peatón {self.unique_id}: No puede llegar a {self.destino}, asignando nuevo destino.")
+                self.asignar_nuevo_destino()
+            return
+
+        siguiente_pos = self.ruta[0]
+        if self.model.grid.is_cell_empty(siguiente_pos) or isinstance(self.model.grid.get_cell_list_contents(siguiente_pos)[0], Celda):
             self.model.grid.move_agent(self, siguiente_pos)
+            self.ruta.pop(0)
+            print(f"Peatón {self.unique_id} se movió a {siguiente_pos}.")
+        else:
+            print(f"Peatón {self.unique_id} no puede moverse a {siguiente_pos} porque está ocupado.")
+            self.ruta = self.calcular_ruta(self.destino)
+            if not self.ruta:
+                self.asignar_nuevo_destino()
+
+    def asignar_nuevo_destino(self):
+        nuevo_destino = random.choice(self.model.banquetas)
+        while nuevo_destino == self.destino:
+            nuevo_destino = random.choice(self.model.banquetas)
+        self.destino = nuevo_destino
+        print(f"Peatón {self.unique_id}: Nuevo destino asignado {self.destino}.")
+        self.ruta = self.calcular_ruta(self.destino)
 
     def step(self):
         """Ejecución de un paso del agente."""
-        self.moverse()
-
+        if self.pos == self.destino:
+            print(f"Peatón {self.unique_id} alcanzó su destino: {self.destino}")
+            self.asignar_nuevo_destino()
+        else:
+            self.moverse()
 
 """
 Clase SemaforoPeatonal:
@@ -196,7 +324,7 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoPeatonal(Agent):
-    def __init__(self, unique_id, model, pos, radio_detencion=3):
+    def __init__(self, unique_id, model, pos, radio_detencion=0):
         super().__init__(unique_id,model)
         self.pos = pos
         self.estado = "rojo"
@@ -210,16 +338,15 @@ class SemaforoPeatonal(Agent):
             include_center=True,
             radius=self.radio_detencion
         )
-        for agente in vecinos:
-            if isinstance(agente,Peaton):
-                return True
-        return False
-    
+        return any(isinstance(agente, Peaton)for agente in vecinos)
+
     def cambiar_estado(self):
-        if self.detectar_peatones():
+        if self.estado == "rojo" and self.detectar_peatones():
             self.estado = "verde"
-        else:
+            print(f"Semáforo peatonal {self.unique_id}: Cambiando a VERDE.")
+        elif self.estado == "verde" and not self.detectar_peatones():
             self.estado = "rojo"
+            print(f"Semáforo peatonal {self.unique_id}: Cambiando a ROJO.")
 
     def step(self):
         self.cambiar_estado()
@@ -242,16 +369,49 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoVehicular(Agent):
-    def __init__(self, unique_id, model, direccion):
-        object.__init__(unique_id, model)
-        self.direccion = direccion
-        self.state = "red"  # Estado inicial del semáforo
-        self.pos = None  # Posición del semáforo en el grid
-        self.unique_id = unique_id  # Identificador único del semáforo
+    estados = ["verde","amarillo","rojo"]
+
+    def __init__(self, unique_id, model, pos, semaforoP, tiempo_amarillo=2,tiempo_verde = 3):
+        super().__init__(unique_id, model)
+        self.pos = pos
+        self.state = "rojo"
+        self.timer = 0
+        self.tiempo_amarillo = tiempo_amarillo
+        self.tiempo_verde = tiempo_verde
+        self.semaforoP = semaforoP
+
+    def sincronizarPeaton(self):
+        """Sincroniza el estado con el semaforo peatona"""
+        if self.semaforoP.estado == "verde":
+            if self.state != "rojo":
+                print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO porque el semáforo peatonal está en VERDE.")
+            self.state = "rojo"
+        elif self.semaforoP.estado == "rojo" and self.state == "rojo":
+            print(f"Semáforo vehicular {self.unique_id}: Cambiando a VERDE porque el semáforo peatonal está en ROJO.")
+            self.state = "verde"
+            self.timer = 0
+
+    def cambiar_estado(self):
+        """Controla los cambios de estado """
+        if self.state == "verde":
+            self.timer += 1
+            if self.timer >= self.tiempo_verde:
+                print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
+                self.state = "amarillo"
+                self.timer = 0
+        elif self.state == "amarillo":
+            self.timer += 1
+            if self.timer >= self.tiempo_amarillo:
+                print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
+                self.state = "rojo"
 
     def step(self):
-        # Lógica para cambiar el estado del semáforo
-        pass
+        """"Controla el cambio de estados de semaforo"""
+        if self.state == "rojo":
+            self.sincronizarPeaton()
+        else:
+            self.cambiar_estado()
+            
 """
 Clase Celda:
 

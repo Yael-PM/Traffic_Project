@@ -68,19 +68,18 @@ class ModeloTrafico(Model):
             self.grid.place_agent(celda, (x, y))
             self.schedule.add(celda)
 
-        # Crear agentes para los semáforos de vehículos
-        for x, y in semaforosV:
-            # Crear el agente Celda para cada coordenada (x, y)
-            celda = Celda((x, y), self, None, color="red", layer=4, width=1, height=1)  # Definir color, capa y dimensiones
-            self.grid.place_agent(celda, (x, y))
-            self.schedule.add(celda)
-
         # Crear agentes para los semáforos de peatones
-        for x, y in semaforosP:
+        for (x, y) in semaforosP:
             # Crear el agente Celda para cada coordenada (x, y)
-            celda = Celda((x, y), self, None, color="red", layer=5, width=0.5, height=0.5)  # Definir color, capa y dimensiones
-            self.grid.place_agent(celda, (x, y))
-            self.schedule.add(celda)
+            semaforo_peatonal = SemaforoPeatonal(f"semaforoP_{x}_{y}",self,(x,y))
+            self.grid.place_agent(semaforo_peatonal,(x,y))
+            self.schedule.add(semaforo_peatonal)
+            # Semaforo Vehicular Sincronizado
+
+        for(x,y) in semaforosV:
+            semaforo_vehicular = SemaforoVehicular(f"semaforoV_{x}_{y}",self,(x,y),semaforo_peatonal)
+            self.grid.place_agent(semaforo_vehicular, (x,y))
+            self.schedule.add(semaforo_vehicular)
 
         # Crear agentes para los estacionamientos
         for nombre, (x, y) in estacionamientos.items():
@@ -92,15 +91,17 @@ class ModeloTrafico(Model):
             self.grid.place_agent(celda, (x, y))  # Colocar la celda en el grid
             self.schedule.add(celda)  # Añadir el agente al planificador
 
+        # Crear agentes para los peatones
         # Inicializar peatones en el modelo
-        for i in range(1):  # Cambia el rango según el número de peatones deseado
-            origen = random.choice(banquetas)
-            destino = random.choice(banquetas)
+        for i in range(5):  # Cambia el rango según el número de peatones deseado
+            origen = random.choice(self.banquetas)
+            destino = random.choice(self.banquetas)
 
             # Asegurarse de que el destino no sea igual al origen
             while destino == origen:
-                destino = random.choice(banquetas)
+                destino = random.choice(self.banquetas)
 
+            print(f"Peatón {i}: Origen = {origen}, Destino = {destino}")
             peaton = Peaton(i, self, origen, destino)
             self.grid.place_agent(peaton, origen)
             self.schedule.add(peaton)
@@ -110,17 +111,16 @@ class ModeloTrafico(Model):
             origen = random.choice(list(estacionamientos.values()))  # Coordenada (x, y)
             destino = random.choice(list(estacionamientos.values()))  # Coordenada (x, y)
 
-            # Asegurarte de que el destino no sea igual al origen
+            # Asegúrate de que el destino no sea igual al origen
             while destino == origen:
                 destino = random.choice(list(estacionamientos.values()))
 
             # Crear y colocar el vehículo
+            print(f"Vehículo {i}: origen={origen}, destino={destino}")  # Agregado para mostrar origen y destino
             vehiculo = Vehiculo(i, self, origen, destino, self.semaforosV, self.transitables, self.estacionamientos)
             self.grid.place_agent(vehiculo, origen)  # Coloca el vehículo en el origen
             self.schedule.add(vehiculo)  # Añade el vehículo al planificador
 
-
-    
     def step(self):
         """
         Realiza un paso de la simulación.
