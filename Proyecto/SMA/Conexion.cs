@@ -5,16 +5,18 @@ using UnityEngine.Networking;
 
 public class Conexion : MonoBehaviour
 {
-    // Start is called before the first frame update
-
-    const int NUM_OBJECTS = 20;
-    List<GameObject> cars;
+    const int NUM_OBJECTS = 1;
+    GameObject activeCar; // Solo este carro será usado
     [SerializeField]
-    List<List<Vector3>> positions;
+    List<Vector3> positions;
 
     float timeToUpdate = 1.0f;
     private float timer;
+
     public float dt;
+
+    // Lista de nombres de GameObjects posibles
+    string[] carNames = { "Eduardo_Car", "Emiliano_Car", "Carro_Yael", "Carro_Olmos" };
 
     IEnumerator RequestPositions()
     {
@@ -22,8 +24,7 @@ public class Conexion : MonoBehaviour
         string url = "http://localhost:8000/datos";
         using (UnityWebRequest www = UnityWebRequest.Post(url, form))
         {
-
-            www.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+            www.downloadHandler = new DownloadHandlerBuffer();
             www.SetRequestHeader("Content-Type", "application/json");
 
             yield return www.SendWebRequest();
@@ -38,33 +39,24 @@ public class Conexion : MonoBehaviour
 
                 if (positions.Count == 0)
                 {
-                    //GameObject car = GameObject.Find("Eduardo_Car");
-                    List<Vector3> p = new List<Vector3>();
-                    foreach (Point pos in step.points)
-                    {
-                        //GameObject car = GameObject.Find("Eduardo_Car");
-                        GameObject car = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                        Vector3 myP = new Vector3(pos.x, 0, pos.z);
-                        car.transform.position = myP;
-                        p.Add(myP);
-                        cars.Add(car);
-                    }
-                    positions.Add(p);
+                    // Inicialización de posiciones
+                    positions = new List<Vector3>();
                 }
-                else
+
+                positions.Clear();
+                foreach (Point pos in step.points)
                 {
-                    List<Vector3> p = new List<Vector3>();
-                    for (int i = 0; i < step.points.Count; i++)
+                    Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
+                    positions.Add(myP);
+                }
+
+                // Mover el carro activo a las posiciones actualizadas
+                if (activeCar != null && positions.Count > 0)
+                {
+                    for (int i = 0; i < positions.Count; i++)
                     {
-                        //GameObject car = GameObject.Find("Eduardo_Car");
-                        GameObject car = cars[i];
-                        Point pos = step.points[i];
-                        Vector3 myP = new Vector3(pos.x, 0, pos.z);
-                        car.transform.position = myP;
-                        p.Add(myP);
-                        cars.Add(car);
+                        activeCar.transform.position = positions[i];
                     }
-                    positions.Add(p);
                 }
             }
         }
@@ -73,12 +65,24 @@ public class Conexion : MonoBehaviour
     void Start()
     {
         timer = timeToUpdate;
-        positions = new List<List<Vector3>>();
-        cars = new List<GameObject>();
+        positions = new List<Vector3>();
+
+        // Selección aleatoria de un GameObject para ser el único activo
+        string randomCarName = carNames[Random.Range(0, carNames.Length)];
+        activeCar = GameObject.Find(randomCarName);
+
+        if (activeCar == null)
+        {
+            Debug.LogError($"GameObject with name {randomCarName} not found in the scene!");
+        }
+        else
+        {
+            Debug.Log($"Selected active car: {randomCarName}");
+        }
+
         StartCoroutine(RequestPositions());
     }
 
-    // Update is called once per frame
     void Update()
     {
         timer -= Time.deltaTime;
