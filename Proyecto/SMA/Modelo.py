@@ -18,11 +18,11 @@ class ModeloTrafico(Model):
         celdas (list): Lista de celdas en el sistema.
     
     Métodos:
-        __init__(self, n, m, semaforos, vehiculos, celdas): Constructor de la clase Modelo.
+        _init_(self, n, m, semaforos, vehiculos, celdas): Constructor de la clase Modelo.
         step(self): Realiza un paso de la simulación.
     """
     
-    def __init__(self, width, height, semaforosV, semaforosP, transitables, intransitables, banquetas, estacionamientos):
+    def _init_(self, width, height, semaforosV, semaforosP, transitables, intransitables, banquetas, estacionamientos):
         """
         Constructor de la clase Modelo.
         
@@ -36,7 +36,7 @@ class ModeloTrafico(Model):
             banquetas (list): Lista de banquetas en el sistema.
             estacionamientos (list): Lista de estacionamientos en el sistema.
         """
-        super().__init__()
+        super()._init_()
         self.grid = MultiGrid(width, height, True)
         self.schedule = SimultaneousActivation(self)
         self.semaforosV = semaforosV
@@ -100,7 +100,7 @@ class ModeloTrafico(Model):
 
         # Crear agentes para los peatones
         # Inicializar peatones en el modelo
-        for i in range(1):  # Cambia el rango según el número de peatones deseado
+        for i in range(5):  # Cambia el rango según el número de peatones deseado
             origen = random.choice(self.banquetas)
             destino = random.choice(self.banquetas)
 

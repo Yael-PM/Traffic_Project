@@ -51,8 +51,8 @@ Métodos:
     step(): Realiza un paso del movimiento del vehículo, verificando todas las condiciones necesarias.
 """
 class Vehiculo(Agent):
-    def __init__(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
-        super().__init__(unique_id, model)
+    def _init_(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
+        super()._init_(unique_id, model)
         self.origen = origen
         self.destino = destino
         self.semaforosV = semaforosV
@@ -271,8 +271,8 @@ Métodos:
     step(): Realiza un paso del movimiento del peatón, verificando todas las condiciones necesarias.
 """
 class Peaton(Agent):
-    def __init__(self, unique_id, model, origen, destino):
-        super().__init__(unique_id, model)
+    def _init_(self, unique_id, model, origen, destino):
+        super()._init_(unique_id, model)
         self.origen = origen
         self.destino = destino
         self.ruta = self.calcular_ruta(destino)
@@ -389,8 +389,8 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoPeatonal(Agent):
-    def __init__(self, unique_id, model, pos, radio_detencion=0):
-        super().__init__(unique_id,model)
+    def _init_(self, unique_id, model, pos, radio_detencion=0):
+        super()._init_(unique_id,model)
         self.pos = pos
         self.estado = "rojo"
         self.radio_detencion = radio_detencion
@@ -436,8 +436,8 @@ Métodos:
 class SemaforoVehicular(Agent):
     estados = ["verde","amarillo","rojo"]
 
-    def __init__(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
-        super().__init__(unique_id, model)
+    def _init_(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
+        super()._init_(unique_id, model)
         self.pos = pos
         self.direccion = direccion
         self.semaforoP = semaforoP
@@ -481,7 +481,7 @@ Nos sirve para representar un cuadro fijo en el grid.
 class Celda(Agent):
     """Agente que representa un cuadro fijo en el grid."""
 
-    def __init__(self, unique_id, model, direction, color, layer, width=1, height=1):
+    def _init_(self, unique_id, model, direction, color, layer, width=1, height=1):
         """
         Inicializa un agente Celda.
 
@@ -495,7 +495,7 @@ class Celda(Agent):
             width: Ancho de la celda, por defecto es 1.
             height: Alto de la celda, por defecto es 1.
         """
-        super().__init__(unique_id, model)
+        super()._init_(unique_id, model)
         self.direccion = direction
         self.color = color  # Color inicial de la celda
         self.layer = layer  # Capa del agente

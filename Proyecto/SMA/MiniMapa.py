@@ -53,6 +53,14 @@ def agentPortrayal(agent):
             "Color": "purple",
             "r": 0.5  # Radio del círculo para el peatón
         }
+    elif isinstance(agent, Peaton):
+        return {
+            "Shape": "circle",
+            "Filled": "true",
+            "Layer": 7,
+            "Color": "black",
+            "r": 0.5  # Radio del círculo para el peatón
+        }
     elif isinstance(agent, SemaforoVehicular):
         color = {
             "verde":"green",
@@ -92,5 +100,5 @@ model_params = {
     "estacionamientos": estacionamientos
 }
 server = ModularServer(ModeloTrafico, [canvas_element], "Traffic Simulation", model_params)
-server.port = 8521
+server.port = 852
 server.launch()
