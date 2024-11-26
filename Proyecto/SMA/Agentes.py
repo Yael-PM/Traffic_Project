@@ -50,6 +50,8 @@ Métodos:
     validar_freno: Valida si el vehículo delante en su celda siguiente puede frenar.
     step(): Realiza un paso del movimiento del vehículo, verificando todas las condiciones necesarias.
 """
+from queue import PriorityQueue
+
 class Vehiculo(Agent):
     def __init__(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
         super().__init__(unique_id, model)
@@ -58,62 +60,42 @@ class Vehiculo(Agent):
         self.semaforosV = semaforosV
         self.transitables = transitables
         self.estacionamientos = estacionamientos
-        self.ruta = self.generar_ruta()  # Calculamos la ruta inicial
-        self.visitadas = set()  # Conjunto para almacenar celdas visitadas
 
-    def generar_ruta(self):
+    def validar_direccion(self):
         """
-        Genera una ruta desde el origen hasta el destino respetando las direcciones transitables.
-        Retorna una lista de coordenadas que representan la ruta calculada.
+        Verifica las celdas transitables adyacentes y selecciona la más cercana al destino.
+        Retorna la coordenada de la celda válida más cercana al destino o None si no hay opciones.
         """
-        origen = self.origen
-        destino = self.destino
-        transitables = self.transitables
+        x, y = self.origen
+        adyacentes = [
+            (x - 1, y), (x + 1, y),  # Coordenadas arriba y abajo
+            (x, y - 1), (x, y + 1),  # Coordenadas izquierda y derecha
+        ]
 
-        # Usamos una cola de prioridad para almacenar las celdas por explorar
-        frontera = PriorityQueue()
-        frontera.put((0, origen))  # (prioridad, celda)
+        # Filtrar las celdas transitables
+        celdas_validas = [
+            coord for coord in adyacentes
+            if any(coord in celdas for celdas in self.transitables.values())
+        ]
 
-        # Diccionarios para rastrear rutas y costos
-        came_from = {}  # De dónde venimos
-        cost_so_far = {}  # Costo acumulado hasta cada celda
-        came_from[origen] = None
-        cost_so_far[origen] = 0
+        # Si no hay celdas válidas, retorna None
+        if not celdas_validas:
+            print(f"No hay direcciones transitables desde el origen {self.origen}.")
+            return None
 
-        while not frontera.empty():
-            _, current = frontera.get()
+        # Ordenar celdas válidas según su distancia Manhattan al destino
+        celdas_validas.sort(key=lambda coord: abs(coord[0] - self.destino[0]) + abs(coord[1] - self.destino[1]))
 
-            # Si alcanzamos el destino, reconstruimos la ruta
-            if current == destino:
-                ruta = []
-                while current:
-                    ruta.append(current)
-                    current = came_from[current]
-                ruta.reverse()
-                print(f"Ruta generada para el vehículo {self.unique_id}: {ruta}")
-                return ruta
+        # Seleccionar la celda que reduce la distancia al destino
+        mejor_celda = celdas_validas[0]
 
-            # Explorar las celdas adyacentes transitables
-            x, y = current
-            adyacentes = [
-                ((x - 1, y), "N"),  # Norte
-                ((x + 1, y), "S"),  # Sur
-                ((x, y - 1), "O"),  # Oeste
-                ((x, y + 1), "E"),  # Este
-            ]
+        # Evitar ciclos: no regresar inmediatamente a una celda reciente
+        if hasattr(self, 'ultima_posicion') and mejor_celda == self.ultima_posicion:
+            if len(celdas_validas) > 1:  # Si hay otras opciones, elige la segunda mejor
+                mejor_celda = celdas_validas[1]
 
-            for next_celda, direccion in adyacentes:
-                if next_celda in transitables.get(direccion, []):  # Respetar las direcciones
-                    new_cost = cost_so_far[current] + 1  # Costo acumulado
-                    if next_celda not in cost_so_far or new_cost < cost_so_far[next_celda]:
-                        cost_so_far[next_celda] = new_cost
-                        priority = new_cost + abs(next_celda[0] - destino[0]) + abs(next_celda[1] - destino[1])
-                        frontera.put((priority, next_celda))
-                        came_from[next_celda] = current
-
-        # Si no se encuentra ruta, retorna None
-        print(f"No se pudo encontrar una ruta desde {origen} hasta {destino}.")
-        return None
+        print(f"Puedo moverme a la coordenada {mejor_celda}.")
+        return mejor_celda
 
     def moverse(self, coordenada):
         """
@@ -122,75 +104,33 @@ class Vehiculo(Agent):
         Parámetros:
             coordenada (tuple): La nueva posición a la que se moverá.
         """
-        if coordenada not in self.visitadas:
+        # Verifica si la coordenada es válida y transitable
+        if any(coordenada in celdas for celdas in self.transitables.values()):
             # Mueve al agente en el modelo
             self.model.grid.move_agent(self, coordenada)
             self.origen = coordenada  # Actualiza el origen
-            self.visitadas.add(coordenada)  # Marca la celda como visitada
             print(f"Me moví directamente a la posición {self.origen}.")
         else:
-            print(f"La posición {coordenada} ya fue visitada, no me moveré.")
-
-    def buscar_celda_transitable(self):
-        """
-        Busca la celda transitable más cercana al destino desde la posición actual.
-        Si no encuentra una celda adyacente válida, devuelve cualquier celda transitable no visitada.
-        """
-        x, y = self.origen
-        adyacentes = [
-            ((x - 1, y), "N"),  # Norte
-            ((x + 1, y), "S"),  # Sur
-            ((x, y - 1), "O"),  # Oeste
-            ((x, y + 1), "E"),  # Este
-        ]
-
-        # Buscar celdas adyacentes transitables
-        transitables_adyacentes = [
-            coord for coord, direccion in adyacentes
-            if coord not in self.visitadas and coord in self.transitables.get(direccion, [])
-        ]
-
-        if transitables_adyacentes:
-            # Ordenar por distancia Manhattan al destino
-            transitables_adyacentes.sort(key=lambda coord: abs(coord[0] - self.destino[0]) + abs(coord[1] - self.destino[1]))
-            return transitables_adyacentes[0]
-
-        # Si no hay celdas adyacentes, buscar cualquier celda transitable
-        for direccion, celdas in self.transitables.items():
-            for celda in celdas:
-                if celda not in self.visitadas:
-                    return celda
-
-        return None  # Si no hay celdas disponibles
+            print(f"No puedo moverme a la posición {coordenada} porque no está en transitables.")
 
     def step(self):
         """
         Método ejecutado en cada paso de la simulación.
-        El agente sigue la ruta generada hacia el destino.
+        El agente valida direcciones y se mueve hacia su destino.
         """
         if self.origen == self.destino:
             print(f"El vehículo {self.unique_id} ha llegado a su destino {self.destino}.")
             return  # Detener el movimiento si ya llegó al destino
 
-        # Si la ruta no existe o está vacía, intenta regenerarla
-        if not self.ruta:
-            self.ruta = self.generar_ruta()
-            if not self.ruta:
-                # Si no se pudo generar ruta, buscar una celda transitable
-                print(f"No se pudo encontrar una ruta, buscando una celda transitable.")
-                siguiente_celda = self.buscar_celda_transitable()
-                if siguiente_celda:
-                    self.moverse(siguiente_celda)
-                    # Intentar recalcular la ruta después de moverse
-                    self.ruta = self.generar_ruta()
-                else:
-                    print(f"No se encontró ninguna celda transitable para el agente {self.unique_id}.")
-                return
+        # Obtener la mejor coordenada para avanzar hacia el destino
+        coordenada = self.validar_direccion()
+        if coordenada:
+            # Almacena la posición actual antes de moverse
+            self.ultima_posicion = self.origen
+            self.moverse(coordenada)
+        else:
+            print(f"El agente {self.unique_id} no puede moverse en este paso.")
 
-        # Moverse a la siguiente celda en la ruta
-        if self.ruta:
-            siguiente_celda = self.ruta.pop(0)
-            self.moverse(siguiente_celda)
 
 """
 Clase Peaton:
@@ -263,7 +203,7 @@ class Peaton(Agent):
             total_path.append(current)
         total_path.reverse()
         return total_path
-
+    
     def distancia(self, a, b):
         """Calcula la distancia Manhattan entre dos puntos."""
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
@@ -277,7 +217,7 @@ class Peaton(Agent):
                 print(f"Peatón {self.unique_id}: No puede llegar a {self.destino}, asignando nuevo destino.")
                 self.asignar_nuevo_destino()
             return
-
+        
         siguiente_pos = self.ruta[0]
         if self.model.grid.is_cell_empty(siguiente_pos) or isinstance(self.model.grid.get_cell_list_contents(siguiente_pos)[0], Celda):
             self.model.grid.move_agent(self, siguiente_pos)
@@ -288,7 +228,7 @@ class Peaton(Agent):
             self.ruta = self.calcular_ruta(self.destino)
             if not self.ruta:
                 self.asignar_nuevo_destino()
-
+    
     def asignar_nuevo_destino(self):
         nuevo_destino = random.choice(self.model.banquetas)
         while nuevo_destino == self.destino:
@@ -371,47 +311,43 @@ Métodos:
 class SemaforoVehicular(Agent):
     estados = ["verde","amarillo","rojo"]
 
-    def __init__(self, unique_id, model, pos, semaforoP, tiempo_amarillo=2,tiempo_verde = 3):
+    def __init__(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
         super().__init__(unique_id, model)
         self.pos = pos
+        self.direccion = direccion
+        self.semaforoP = semaforoP
+        self.grupo = grupo
         self.state = "rojo"
         self.timer = 0
         self.tiempo_amarillo = tiempo_amarillo
-        self.tiempo_verde = tiempo_verde
-        self.semaforoP = semaforoP
-
-    def sincronizarPeaton(self):
-        """Sincroniza el estado con el semaforo peatona"""
-        if self.semaforoP.estado == "verde":
-            if self.state != "rojo":
-                print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO porque el semáforo peatonal está en VERDE.")
-            self.state = "rojo"
-        elif self.semaforoP.estado == "rojo" and self.state == "rojo":
-            print(f"Semáforo vehicular {self.unique_id}: Cambiando a VERDE porque el semáforo peatonal está en ROJO.")
-            self.state = "verde"
-            self.timer = 0
-
-    def cambiar_estado(self):
-        """Controla los cambios de estado """
-        if self.state == "verde":
-            self.timer += 1
-            if self.timer >= self.tiempo_verde:
-                print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
-                self.state = "amarillo"
-                self.timer = 0
-        elif self.state == "amarillo":
-            self.timer += 1
-            if self.timer >= self.tiempo_amarillo:
-                print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
-                self.state = "rojo"
 
     def step(self):
-        """"Controla el cambio de estados de semaforo"""
-        if self.state == "rojo":
-            self.sincronizarPeaton()
-        else:
-            self.cambiar_estado()
-            
+        """Controla los cambios de estado."""
+        # Controlar el cambio de estado basado en el grupo
+        if self.grupo == 1 and self.model.grupo_activo == 1:
+            if self.state == "verde":
+                self.timer += 1
+                if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
+                    self.state = "amarillo"
+                    self.timer = 0
+            elif self.state == "amarillo":
+                self.timer += 1
+                if self.timer >= self.tiempo_amarillo:
+                    self.state = "rojo"
+        elif self.grupo == 2 and self.model.grupo_activo == 2:
+            if self.state == "verde":
+                self.timer += 1
+                if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
+                    self.state = "amarillo"
+                    self.timer = 0
+            elif self.state == "amarillo":
+                self.timer += 1
+                if self.timer >= self.tiempo_amarillo:
+                    self.state = "rojo"
+        elif self.state == "rojo":
+            if self.grupo == self.model.grupo_activo:
+                self.state = "verde"
+
 """
 Clase Celda:
 
@@ -419,11 +355,11 @@ Nos sirve para representar un cuadro fijo en el grid.
 """
 class Celda(Agent):
     """Agente que representa un cuadro fijo en el grid."""
-    
+
     def __init__(self, unique_id, model, direction, color, layer, width=1, height=1):
         """
         Inicializa un agente Celda.
-        
+
         Args:
             unique_id: Identificador único del agente.
             model: El modelo donde se encuentra el agente.
