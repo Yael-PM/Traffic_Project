@@ -45,12 +45,16 @@ class ModeloTrafico(Model):
         self.intransitables = intransitables
         self.banquetas = banquetas
         self.estacionamientos = estacionamientos
+        self.grupo_semaforos = []
+        self.semaforos_peatonales = {}
+        self.step_count = 0
+        self.grupo_activo = 1  # Inicializa el primer grupo activo
 
         # Crear agentes para las celdas transitables
         for direction, celdas in transitables.items():
             for x, y in celdas:
                 # Crear el agente Celda para cada coordenada (x, y)
-                celda = Celda((x, y), self, direction, color="green", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
+                celda = Celda((x, y), self, direction, color="white", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
                 self.grid.place_agent(celda, (x, y))  # Colocar la celda en el grid
                 self.schedule.add(celda)  # Añadir el agente al planificador
 
@@ -76,10 +80,13 @@ class ModeloTrafico(Model):
             self.schedule.add(semaforo_peatonal)
             # Semaforo Vehicular Sincronizado
 
-        for(x,y) in semaforosV:
-            semaforo_vehicular = SemaforoVehicular(f"semaforoV_{x}_{y}",self,(x,y),semaforo_peatonal)
-            self.grid.place_agent(semaforo_vehicular, (x,y))
-            self.schedule.add(semaforo_vehicular)
+        # Crear semaforos vehiculares
+        for direccion, semaforos in semaforosV.items():
+            for idx, (x,y) in enumerate(semaforos):
+                grupo = 1 if idx % 2 == 0 else 2
+                semaforo_vehicular = SemaforoVehicular(f"semaforoV_{x}_{y}", self, (x, y), direccion, None, grupo)
+                self.grid.place_agent(semaforo_vehicular,(x, y))
+                self.schedule.add(semaforo_vehicular)
 
         # Crear agentes para los estacionamientos
         for nombre, (x, y) in estacionamientos.items():
@@ -107,7 +114,7 @@ class ModeloTrafico(Model):
             self.schedule.add(peaton)
 
         # Crear agentes para los vehículos
-        for i in range(1):  # Cambia el rango según el número de vehículos deseado
+        for i in range(5):  # Cambia el rango según el número de vehículos deseado
             origen = random.choice(list(estacionamientos.values()))  # Coordenada (x, y)
             destino = random.choice(list(estacionamientos.values()))  # Coordenada (x, y)
 
@@ -122,7 +129,39 @@ class ModeloTrafico(Model):
             self.schedule.add(vehiculo)  # Añade el vehículo al planificador
 
     def step(self):
-        """
-        Realiza un paso de la simulación.
-        """
-        self.schedule.step()  # Ejecutar el planificador
+        """ Realiza un paso de la simulación con depuración."""
+
+        print(f"Iniciando step {self.step_count}...")
+        self.schedule.step()  # Avanza los agentes
+
+        # Incrementa el contador de pasos
+        self.step_count += 1
+
+        if not self.grupo_semaforos:
+            print("No hay grupos de semáforos definidos.")
+            return
+
+        self.grupo_activo = 1 if (self.step_count // 10) % 2 == 0 else 2
+        print(f"Grupo activo: {self.grupo_activo}")
+
+        # Actualiza semáforos
+        for i, grupo in enumerate(self.grupo_semaforos):
+            vehicular_pos = grupo["vehiculares"]
+            vehicular = next(
+                (agent for agent in self.grid.get_cell_list_contents(vehicular_pos)
+                if isinstance(agent, SemaforoVehicular)),
+                None
+            )
+            if vehicular:
+                vehicular.state = "verde" if i == grupo_activo else "rojo"
+                print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
+
+            for peatonal_pos in grupo["peatonales"]:
+                peatonal = next(
+                    (agent for agent in self.grid.get_cell_list_contents(peatonal_pos)
+                    if isinstance(agent, SemaforoPeatonal)),
+                    None
+                )
+                if peatonal:
+                    peatonal.estado = "verde" if vehicular.grupo == self.grupo_activo else "rojo"
+                    print(f"Semáforo peatonal en {peatonal_pos}: {peatonal.estado}")
