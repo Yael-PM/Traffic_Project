@@ -93,7 +93,7 @@ class ModeloTrafico(Model):
 
         # Crear agentes para los peatones
         # Inicializar peatones en el modelo
-        for i in range(5):  # Cambia el rango según el número de peatones deseado
+        for i in range(1):  # Cambia el rango según el número de peatones deseado
             origen = random.choice(self.banquetas)
             destino = random.choice(self.banquetas)
 

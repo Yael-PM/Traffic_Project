@@ -5,7 +5,7 @@ using UnityEngine.Networking;
 
 public class Conexion : MonoBehaviour
 {
-    const int NUM_OBJECTS = 1;
+    const int NUM_OBJECTS = 5;
     GameObject activeCar; // Solo este carro será usado
     [SerializeField]
     List<Vector3> positions;
