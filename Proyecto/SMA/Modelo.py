@@ -152,7 +152,7 @@ class ModeloTrafico(Model):
                 None
             )
             if vehicular:
-                vehicular.state = "verde" if i == grupo_activo else "rojo"
+                vehicular.state = "verde" if i == self.grupo_activo else "rojo"
                 print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
 
             for peatonal_pos in grupo["peatonales"]:

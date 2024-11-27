@@ -309,7 +309,7 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoVehicular(Agent):
-    estados = ["verde","amarillo","rojo"]
+    estados = ["verde", "amarillo", "rojo"]
 
     def __init__(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
         super().__init__(unique_id, model)
@@ -317,36 +317,47 @@ class SemaforoVehicular(Agent):
         self.direccion = direccion
         self.semaforoP = semaforoP
         self.grupo = grupo
-        self.state = "rojo"
+        self.estado = self.estados[2]  # Inicialmente en "rojo"
         self.timer = 0
         self.tiempo_amarillo = tiempo_amarillo
 
     def step(self):
         """Controla los cambios de estado."""
-        # Controlar el cambio de estado basado en el grupo
-        if self.grupo == 1 and self.model.grupo_activo == 1:
-            if self.state == "verde":
-                self.timer += 1
-                if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
-                    self.state = "amarillo"
-                    self.timer = 0
-            elif self.state == "amarillo":
-                self.timer += 1
-                if self.timer >= self.tiempo_amarillo:
-                    self.state = "rojo"
-        elif self.grupo == 2 and self.model.grupo_activo == 2:
-            if self.state == "verde":
-                self.timer += 1
-                if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
-                    self.state = "amarillo"
-                    self.timer = 0
-            elif self.state == "amarillo":
-                self.timer += 1
-                if self.timer >= self.tiempo_amarillo:
-                    self.state = "rojo"
-        elif self.state == "rojo":
-            if self.grupo == self.model.grupo_activo:
-                self.state = "verde"
+        # Verificar si el semáforo peatonal ha detectado peatones
+        if self.semaforoP.detectar_peatones():
+            print(f"Semáforo vehicular {self.unique_id}: Peatones detectados, cambiando a ROJO.")
+            self.estado = self.estados[2]  # Cambiar a "rojo"
+            self.semaforoP.estado = self.semaforoP.estados[0]  # Cambiar semáforo peatonal a "verde"
+        else:
+            # Controlar el cambio de estado basado en el grupo
+            if self.grupo == 1 and self.model.grupo_activo == 1:
+                if self.estado == self.estados[0]:  # "verde"
+                    self.timer += 1
+                    if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
+                        self.estado = self.estados[1]  # Cambiar a "amarillo"
+                        self.timer = 0
+                        print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
+                elif self.estado == self.estados[1]:  # "amarillo"
+                    self.timer += 1
+                    if self.timer >= self.tiempo_amarillo:
+                        self.estado = self.estados[2]  # Cambiar a "rojo"
+                        print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
+            elif self.grupo == 2 and self.model.grupo_activo == 2:
+                if self.estado == self.estados[0]:  # "verde"
+                    self.timer += 1
+                    if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
+                        self.estado = self.estados[1]  # Cambiar a "amarillo"
+                        self.timer = 0
+                        print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
+                elif self.estado == self.estados[1]:  # "amarillo"
+                    self.timer += 1
+                    if self.timer >= self.tiempo_amarillo:
+                        self.estado = self.estados[2]  # Cambiar a "rojo"
+                        print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
+            elif self.estado == self.estados[2]:  # "rojo"
+                if self.grupo == self.model.grupo_activo:
+                    self.estado = self.estados[0]  # Cambiar a "verde"
+                    print(f"Semáforo vehicular {self.unique_id}: Cambiando a VERDE.")
 
 """
 Clase Celda:
