@@ -18,11 +18,11 @@ class ModeloTrafico(Model):
         celdas (list): Lista de celdas en el sistema.
     
     Métodos:
-        _init_(self, n, m, semaforos, vehiculos, celdas): Constructor de la clase Modelo.
+        __init__(self, n, m, semaforos, vehiculos, celdas): Constructor de la clase Modelo.
         step(self): Realiza un paso de la simulación.
     """
     
-    def _init_(self, width, height, semaforosV, semaforosP, transitables, intransitables, banquetas, estacionamientos):
+    def __init__(self, width, height, semaforosV, semaforosP, transitables, intransitables, banquetas, estacionamientos):
         """
         Constructor de la clase Modelo.
         
@@ -36,7 +36,7 @@ class ModeloTrafico(Model):
             banquetas (list): Lista de banquetas en el sistema.
             estacionamientos (list): Lista de estacionamientos en el sistema.
         """
-        super()._init_()
+        super().__init__()
         self.grid = MultiGrid(width, height, True)
         self.schedule = SimultaneousActivation(self)
         self.semaforosV = semaforosV
@@ -54,7 +54,7 @@ class ModeloTrafico(Model):
         for direction, celdas in transitables.items():
             for x, y in celdas:
                 # Crear el agente Celda para cada coordenada (x, y)
-                celda = Celda((x, y), self, direction, color="white", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
+                celda = Celda((x, y), self, direction, color="green", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
                 self.grid.place_agent(celda, (x, y))  # Colocar la celda en el grid
                 self.schedule.add(celda)  # Añadir el agente al planificador
 
@@ -78,7 +78,6 @@ class ModeloTrafico(Model):
             semaforo_peatonal = SemaforoPeatonal(f"semaforoP_{x}_{y}",self,(x,y))
             self.grid.place_agent(semaforo_peatonal,(x,y))
             self.schedule.add(semaforo_peatonal)
-            # Semaforo Vehicular Sincronizado
 
         # Crear semaforos vehiculares
         for direccion, semaforos in semaforosV.items():

@@ -50,153 +50,17 @@ Métodos:
     validar_freno: Valida si el vehículo delante en su celda siguiente puede frenar.
     step(): Realiza un paso del movimiento del vehículo, verificando todas las condiciones necesarias.
 """
+from queue import PriorityQueue
+
 class Vehiculo(Agent):
-    def _init_(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
-        super()._init_(unique_id, model)
+    def __init__(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
+        super().__init__(unique_id, model)
         self.origen = origen
         self.destino = destino
         self.semaforosV = semaforosV
         self.transitables = transitables
         self.estacionamientos = estacionamientos
-        self.ruta = self.generar_ruta()  # Calculamos la ruta inicial
-        self.visitadas = set()  # Conjunto para almacenar celdas visitadas
 
-    def determinar_direccion(self):
-        """
-        Determina hacia qué dirección (N, S, E, O, NE, NO, SE, SO) debe moverse el vehículo
-        con respecto a su posición actual y el destino.
-        """
-        x_actual, y_actual = self.origen
-        x_destino, y_destino = self.destino
-
-        delta_x = x_destino - x_actual
-        delta_y = y_destino - y_actual
-
-        # Determinar la dirección principal
-        if delta_x > 0 and delta_y > 0:
-            direccion = "Noreste"
-        elif delta_x > 0 and delta_y < 0:
-            direccion = "Sureste"
-        elif delta_x < 0 and delta_y > 0:
-            direccion = "Noroeste"
-        elif delta_x < 0 and delta_y < 0:
-            direccion = "Suroeste"
-        elif delta_x > 0:
-            direccion = "Norte"
-        elif delta_x < 0:
-            direccion = "Sur"
-        elif delta_y > 0:
-            direccion = "Este"
-        elif delta_y < 0:
-            direccion = "Oeste"
-        else:
-            direccion = "Estás en el destino"
-
-        print(f"Dirección hacia el destino: {direccion}")
-        return direccion
-
-    def generar_ruta(self):
-        """
-        Genera una ruta desde el origen hasta el destino respetando las direcciones transitables.
-        Retorna una lista de coordenadas que representan la ruta calculada.
-        """
-        origen = self.origen
-        destino = self.destino
-        transitables = self.transitables
-
-        # Usamos una cola de prioridad para almacenar las celdas por explorar
-        frontera = PriorityQueue()
-        frontera.put((0, origen))  # (prioridad, celda)
-
-        # Diccionarios para rastrear rutas y costos
-        came_from = {}  # De dónde venimos
-        cost_so_far = {}  # Costo acumulado hasta cada celda
-        came_from[origen] = None
-        cost_so_far[origen] = 0
-
-        while not frontera.empty():
-            _, current = frontera.get()
-
-            # Si alcanzamos el destino, reconstruimos la ruta
-            if current == destino:
-                ruta = []
-                while current:
-                    ruta.append(current)
-                    current = came_from[current]
-                ruta.reverse()
-                print(f"Ruta generada para el vehículo {self.unique_id}: {ruta}")
-                return ruta
-
-            # Explorar las celdas adyacentes transitables
-            x, y = current
-            adyacentes = [
-                ((x - 1, y), "N"),  # Norte
-                ((x + 1, y), "S"),  # Sur
-                ((x, y - 1), "O"),  # Oeste
-                ((x, y + 1), "E"),  # Este
-            ]
-
-            for next_celda, direccion in adyacentes:
-                if next_celda in transitables.get(direccion, []):  # Respetar las direcciones
-                    new_cost = cost_so_far[current] + 1  # Costo acumulado
-                    if next_celda not in cost_so_far or new_cost < cost_so_far[next_celda]:
-                        cost_so_far[next_celda] = new_cost
-                        priority = new_cost + abs(next_celda[0] - destino[0]) + abs(next_celda[1] - destino[1])
-                        frontera.put((priority, next_celda))
-                        came_from[next_celda] = current
-
-        # Si no se encuentra ruta, retorna None
-        print(f"No se pudo encontrar una ruta desde {origen} hasta {destino}.")
-        return None
-
-    def moverse(self, coordenada):
-        """
-        Mueve al agente a la coordenada especificada si está en las celdas transitables.
-
-        Parámetros:
-            coordenada (tuple): La nueva posición a la que se moverá.
-        """
-        if coordenada not in self.visitadas:
-            # Mueve al agente en el modelo
-            self.model.grid.move_agent(self, coordenada)
-            self.origen = coordenada  # Actualiza el origen
-            self.visitadas.add(coordenada)  # Marca la celda como visitada
-            print(f"Me moví directamente a la posición {self.origen}.")
-        else:
-            print(f"La posición {coordenada} ya fue visitada, no me moveré.")
-
-    def buscar_celda_transitable(self):
-        """
-        Busca la celda transitable más cercana al destino desde la posición actual.
-        Selecciona la celda que minimiza la distancia Manhattan.
-        """
-        x, y = self.origen
-        adyacentes = [
-            ((x - 1, y), "N"),  # Norte
-            ((x + 1, y), "S"),  # Sur
-            ((x, y - 1), "O"),  # Oeste
-            ((x, y + 1), "E"),  # Este
-        ]
-
-        # Filtrar celdas transitables adyacentes
-        transitables_adyacentes = [
-            coord for coord, direccion in adyacentes
-            if coord not in self.visitadas and coord in self.transitables.get(direccion, [])
-        ]
-
-        # Si hay celdas transitables adyacentes, priorizar las que reduzcan la distancia Manhattan
-        if transitables_adyacentes:
-            transitables_adyacentes.sort(key=lambda coord: abs(coord[0] - self.destino[0]) + abs(coord[1] - self.destino[1]))
-            return transitables_adyacentes[0]  # Seleccionar la mejor celda
-
-        # Si no hay celdas adyacentes disponibles, buscar en el resto de transitables
-        for direccion, celdas in self.transitables.items():
-            for celda in celdas:
-                if celda not in self.visitadas:
-                    return celda
-
-        return None  # Si no hay celdas disponibles
-    
     def validar_direccion(self):
         """
         Verifica las celdas transitables adyacentes y selecciona la más cercana al destino.
@@ -233,6 +97,21 @@ class Vehiculo(Agent):
         print(f"Puedo moverme a la coordenada {mejor_celda}.")
         return mejor_celda
 
+    def moverse(self, coordenada):
+        """
+        Mueve al agente a la coordenada especificada si está en las celdas transitables.
+
+        Parámetros:
+            coordenada (tuple): La nueva posición a la que se moverá.
+        """
+        # Verifica si la coordenada es válida y transitable
+        if any(coordenada in celdas for celdas in self.transitables.values()):
+            # Mueve al agente en el modelo
+            self.model.grid.move_agent(self, coordenada)
+            self.origen = coordenada  # Actualiza el origen
+            print(f"Me moví directamente a la posición {self.origen}.")
+        else:
+            print(f"No puedo moverme a la posición {coordenada} porque no está en transitables.")
 
     def step(self):
         """
@@ -253,7 +132,6 @@ class Vehiculo(Agent):
             print(f"El agente {self.unique_id} no puede moverse en este paso.")
 
 
-
 """
 Clase Peaton:
 
@@ -271,8 +149,8 @@ Métodos:
     step(): Realiza un paso del movimiento del peatón, verificando todas las condiciones necesarias.
 """
 class Peaton(Agent):
-    def _init_(self, unique_id, model, origen, destino):
-        super()._init_(unique_id, model)
+    def __init__(self, unique_id, model, origen, destino):
+        super().__init__(unique_id, model)
         self.origen = origen
         self.destino = destino
         self.ruta = self.calcular_ruta(destino)
@@ -367,9 +245,6 @@ class Peaton(Agent):
         else:
             self.moverse()
 
-
-
-
 """
 Clase SemaforoPeatonal:
 
@@ -389,8 +264,8 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoPeatonal(Agent):
-    def _init_(self, unique_id, model, pos, radio_detencion=0):
-        super()._init_(unique_id,model)
+    def __init__(self, unique_id, model, pos, radio_detencion=0):
+        super().__init__(unique_id,model)
         self.pos = pos
         self.estado = "rojo"
         self.radio_detencion = radio_detencion
@@ -436,8 +311,8 @@ Métodos:
 class SemaforoVehicular(Agent):
     estados = ["verde","amarillo","rojo"]
 
-    def _init_(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
-        super()._init_(unique_id, model)
+    def __init__(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
+        super().__init__(unique_id, model)
         self.pos = pos
         self.direccion = direccion
         self.semaforoP = semaforoP
@@ -481,7 +356,7 @@ Nos sirve para representar un cuadro fijo en el grid.
 class Celda(Agent):
     """Agente que representa un cuadro fijo en el grid."""
 
-    def _init_(self, unique_id, model, direction, color, layer, width=1, height=1):
+    def __init__(self, unique_id, model, direction, color, layer, width=1, height=1):
         """
         Inicializa un agente Celda.
 
@@ -495,7 +370,7 @@ class Celda(Agent):
             width: Ancho de la celda, por defecto es 1.
             height: Alto de la celda, por defecto es 1.
         """
-        super()._init_(unique_id, model)
+        super().__init__(unique_id, model)
         self.direccion = direction
         self.color = color  # Color inicial de la celda
         self.layer = layer  # Capa del agente

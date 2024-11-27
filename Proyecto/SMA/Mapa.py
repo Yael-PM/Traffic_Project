@@ -101,5 +101,5 @@ model_params = {
     "estacionamientos": estacionamientos
 }
 server = ModularServer(ModeloTrafico, [canvas_element], "Traffic Simulation", model_params)
-server.port = 852
+server.port = 8521
 server.launch()
