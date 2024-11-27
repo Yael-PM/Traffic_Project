@@ -128,39 +128,7 @@ class ModeloTrafico(Model):
             self.schedule.add(vehiculo)  # Añade el vehículo al planificador
 
     def step(self):
-        """ Realiza un paso de la simulación con depuración."""
-
-        print(f"Iniciando step {self.step_count}...")
-        self.schedule.step()  # Avanza los agentes
-
-        # Incrementa el contador de pasos
-        self.step_count += 1
-
-        if not self.grupo_semaforos:
-            print("No hay grupos de semáforos definidos.")
-            return
-
-        self.grupo_activo = 1 if (self.step_count // 10) % 2 == 0 else 2
-        print(f"Grupo activo: {self.grupo_activo}")
-
-        # Actualiza semáforos
-        for i, grupo in enumerate(self.grupo_semaforos):
-            vehicular_pos = grupo["vehiculares"]
-            vehicular = next(
-                (agent for agent in self.grid.get_cell_list_contents(vehicular_pos)
-                if isinstance(agent, SemaforoVehicular)),
-                None
-            )
-            if vehicular:
-                vehicular.state = "verde" if i == grupo_activo else "rojo"
-                print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
-
-            for peatonal_pos in grupo["peatonales"]:
-                peatonal = next(
-                    (agent for agent in self.grid.get_cell_list_contents(peatonal_pos)
-                    if isinstance(agent, SemaforoPeatonal)),
-                    None
-                )
-                if peatonal:
-                    peatonal.estado = "verde" if vehicular.grupo == self.grupo_activo else "rojo"
-                    print(f"Semáforo peatonal en {peatonal_pos}: {peatonal.estado}")
+        """
+        Realiza un paso de la simulación.
+        """
+        self.schedule.step()  # Ejecutar el planificador
