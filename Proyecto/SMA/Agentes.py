@@ -91,6 +91,37 @@ class Vehiculo(Agent):
             grafo.add_node(estacionamiento)
 
         return grafo
+    
+    def validar_estado_semaforo(self, pos):
+        """
+        Verifica si el semáforo en la posición dada permite el paso.
+
+        Args:
+            pos (tuple): Coordenada de la próxima posición.
+
+        Returns:
+            bool: True si el semáforo está en verde o si no hay semáforo en la posición, False de lo contrario.
+        """
+        # Obtener los agentes en la posición objetivo
+        agentes_en_pos = self.model.grid.get_cell_list_contents([pos])
+        
+        # Filtrar los semáforos vehiculares en la posición
+        semaforos = [agente for agente in agentes_en_pos if isinstance(agente, SemaforoVehicular)]
+
+        # Si no hay semáforos en la posición, el paso está permitido
+        if not semaforos:
+            print(f"Vehículo {self.unique_id}: No hay semáforo en {pos}, paso permitido.")
+            return True
+
+        # Verificar el estado de los semáforos
+        for semaforo in semaforos:
+            if semaforo.state == "rojo":
+                print(f"Vehículo {self.unique_id}: Semáforo en {pos} está en ROJO, paso no permitido.")
+                return False  # Detenerse si al menos un semáforo está en rojo
+
+        # Si todos los semáforos permiten el paso
+        print(f"Vehículo {self.unique_id}: Semáforo en {pos} está en VERDE, paso permitido.")
+        return True
 
     def validar_vecinos(self, radio=2, filtro=None):
         """Valida los vecinos dentro de un radio y aplica un filtro opcional."""
@@ -138,14 +169,38 @@ class Vehiculo(Agent):
                 )
 
         if siguiente_pos:
-            if self.validar_restricciones(siguiente_pos):
-                self.model.grid.move_agent(self, siguiente_pos)
-                self.pos_actual = siguiente_pos
-                print(f"Vehículo {self.unique_id}: Se movió a {self.pos_actual}")
-            else:
-                print(f"Vehículo {self.unique_id}: Esperando en {self.pos_actual} debido a restricciones.")
-        else:
-            print(f"Vehículo {self.unique_id}: No tiene movimientos válidos.")
+            # Validar estado del semáforo antes de moverse
+            if not self.validar_estado_semaforo(siguiente_pos):
+                print(f"Vehículo {self.unique_id}: Detenido en {self.pos_actual} por semáforo en rojo.")
+                return  # Detenerse si el semáforo no permite el paso
+
+            self.model.grid.move_agent(self, siguiente_pos)
+            self.pos_actual = siguiente_pos
+            print(f"Vehículo {self.unique_id}: Se movió a {self.pos_actual}")
+
+    def validar_semaforo(self, pos):
+        """
+        Verifica si el semáforo en la posición dada está en verde.
+
+        Args:
+            pos (tuple): Coordenada de la próxima posición.
+
+        Returns:
+            bool: True si el semáforo permite el paso, False de lo contrario.
+        """
+        agentes_en_pos = self.model.grid.get_cell_list_contents([pos])
+        semaforos = [a for a in agentes_en_pos if isinstance(a, SemaforoVehicular)]
+
+        if not semaforos:
+            # Si no hay semáforo, se asume que el paso está permitido
+            return True
+
+        for semaforo in semaforos:
+            if semaforo.state == "rojo":
+                return False  # Semáforo en rojo, no se permite el paso
+
+        return True  # Todos los semáforos en verde
+
 
     def validar_restricciones(self, celda):
         """
@@ -351,11 +406,13 @@ Métodos:
     step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoPeatonal(Agent):
-    def __init__(self, unique_id, model, pos, radio_detencion=0):
-        super().__init__(unique_id,model)
+    def __init__(self, unique_id, model, pos, radio_detencion=0, tiempo_cambio=5):
+        super().__init__(unique_id, model)
         self.pos = pos
-        self.estado = "rojo"
+        self.state = "rojo"
         self.radio_detencion = radio_detencion
+        self.tiempo_cambio = tiempo_cambio
+        self.contador = 0  # Para controlar el tiempo mínimo en cada estado
 
     def detectar_peatones(self):
         """"Detecta peatones cerca """
@@ -365,35 +422,42 @@ class SemaforoPeatonal(Agent):
             include_center=True,
             radius=self.radio_detencion
         )
-        return any(isinstance(agente, Peaton)for agente in vecinos)
+        return any(isinstance(agente, Peaton) for agente in vecinos)
 
     def cambiar_estado(self):
-        if self.estado == "rojo" and self.detectar_peatones():
-            self.estado = "verde"
-            #print(f"Semáforo peatonal {self.unique_id}: Cambiando a VERDE.")
-        elif self.estado == "verde" and not self.detectar_peatones():
-            self.estado = "rojo"
-            #print(f"Semáforo peatonal {self.unique_id}: Cambiando a ROJO.")
+        if self.contador < self.tiempo_cambio:
+            self.contador += 1
+            return
+
+        if self.state == "rojo" and self.detectar_peatones():
+            self.state = "verde"
+            self.contador = 0  # Reiniciar contador
+            print(f"Semáforo peatonal {self.unique_id}: Cambiando a VERDE.")
+        elif self.state == "verde" and not self.detectar_peatones():
+            self.state = "rojo"
+            self.contador = 0  # Reiniciar contador
+            print(f"Semáforo peatonal {self.unique_id}: Cambiando a ROJO.")
 
     def step(self):
         self.cambiar_estado()
+        print(f"Semáforo peatonal {self.unique_id}: {self.state}")
 
 
 """
-    Clase SemaforoVehicular:
+Clase SemaforoVehicular:
 
-    La clase SemaforoVehicular representa un semáforo vehicular que puede cambiar su estado entre "verde", "amarillo" y "rojo".
-    Su propósito es regular el tráfico vehicular en la ciudad. pero no se comunica con los vehiculos, solo con el semáforo peatonal.
+La clase SemaforoVehicular representa un semáforo vehicular que puede cambiar su estado entre "verde", "amarillo" y "rojo".
+Su propósito es regular el tráfico vehicular en la ciudad. pero no se comunica con los vehiculos, solo con el semáforo peatonal.
 
-    Atributos: 
-        estado(str): Indica el estado del semáforo. "verde" , "amarillo" y "rojo".
-        evento(int): Indica si el semáforo peatonal ha mandado una petición.
-        tiempo(int): Indica el tiempo restante para cambiar de estado y es mandado al semáforo peatonal.
+Atributos: 
+    estado(str): Indica el estado del semáforo. "verde" , "amarillo" y "rojo".
+    evento(int): Indica si el semáforo peatonal ha mandado una petición.
+    tiempo(int): Indica el tiempo restante para cambiar de estado y es mandado al semáforo peatonal.
 
-    Métodos:
-        sensar_vehiculos(): Sensa el número de vehículos en la intersección y lo manda al semáforo peatonal.
-        cambiar_estado(): Cambia el estado del semáforo entre "verde", "amarillo" y "rojo".
-        step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
+Métodos:
+    sensar_vehiculos(): Sensa el número de vehículos en la intersección y lo manda al semáforo peatonal.
+    cambiar_estado(): Cambia el estado del semáforo entre "verde", "amarillo" y "rojo".
+    step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoVehicular(Agent):
     estados = ["verde", "amarillo", "rojo"]
@@ -421,10 +485,10 @@ class SemaforoVehicular(Agent):
     def cambiar_estado(self, nuevo_estado):
         """Cambia el estado del semáforo y de los semáforos adyacentes."""
         self.state = nuevo_estado
-        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a {nuevo_estado.upper()}.")
+        print(f"Semáforo vehicular {self.unique_id}: Cambiando a {nuevo_estado.upper()}.")
         for semaforo in self.obtener_semaforos_adyacentes():
             semaforo.state = nuevo_estado
-            #print(f"Semáforo vehicular {semaforo.unique_id}: Cambiando a {nuevo_estado.upper()}.")
+            print(f"Semáforo vehicular: Cambiando a {nuevo_estado.upper()}.")
 
     def step(self):
         """Controla los cambios de estado."""
@@ -432,42 +496,26 @@ class SemaforoVehicular(Agent):
         if self.semaforoP.detectar_peatones():
             print(f"Semáforo vehicular {self.unique_id}: Peatones detectados, cambiando a ROJO.")
             self.state = self.estados[2]  # Cambiar a "rojo"
-            self.semaforoP.estado = self.semaforoP.estados[0]  # Cambiar semáforo peatonal a "verde"
+            self.semaforoP.state = self.semaforoP.estados[0]  # Cambiar semáforo peatonal a "verde"
         else:
-            # Controlar el cambio de estado basado en el grupo
-            if self.grupo == 1 and self.model.grupo_activo == 1:
-                if self.state == self.estados[0]:  # "verde"
-                    self.timer += 1
-                    if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
-                        #self.state = self.estados[1]  # Cambiar a "amarillo"
-                        self.cambiar_estado(self.estados[1])
-                        self.timer = 0
-                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
-                elif self.state == self.estados[1]:  # "amarillo"
-                    self.timer += 1
-                    if self.timer >= self.tiempo_amarillo:
-                        #self.state = self.estados[2]  # Cambiar a "rojo"
-                        self.cambiar_estado(self.estados[2])
-                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
-            elif self.grupo == 2 and self.model.grupo_activo == 2:
-                if self.state == self.estados[0]:  # "verde"
-                    self.timer += 1
-                    if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
-                        #self.state = self.estados[1]  # Cambiar a "amarillo"
-                        self.cambiar_estado(self.estados[1])
-                        self.timer = 0
-                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
-                elif self.state == self.estados[1]:  # "amarillo"
-                    self.timer += 1
-                    if self.timer >= self.tiempo_amarillo:
-                        #self.state = self.estados[2]  # Cambiar a "rojo"
-                        self.cambiar_estado(self.estados[2])
-                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
-            elif self.state == self.estados[2]:  # "rojo"
-                if self.grupo == self.model.grupo_activo:
-                    #self.state = self.estados[0]  # Cambiar a "verde"
-                    self.cambiar_estado(self.estados[0])
-                    #print(f"Semáforo vehicular {self.unique_id}: Cambiando a VERDE.")
+            # Actualiza el estado del semáforo vehicular basado en el grupo activo del modelo
+            nuevo_estado = "verde" if self.grupo == self.model.grupo_activo else "rojo"
+            self.cambiar_estado(nuevo_estado)
+            print(f"Semáforo vehicular {self.unique_id}: {self.state}")
+    
+            # Asegurarse de que todos los semáforos vehiculares cambien de estado
+            for semaforo in self.model.schedule.agents:
+                if isinstance(semaforo, SemaforoVehicular):
+                    nuevo_estado = "verde" if semaforo.grupo == self.model.grupo_activo else "rojo"
+                    semaforo.cambiar_estado(nuevo_estado)
+                    print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
+    
+            semaforos = [agent for agent in self.model.schedule.agents if isinstance(agent, SemaforoVehicular) or isinstance(agent, SemaforoPeatonal)]
+    
+            print("Lista de todos los semáforos en el mapa")
+            for semaforo in semaforos:
+                tipo = "Vehicular" if isinstance(semaforo, SemaforoVehicular) else "Peatonal"
+                print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")
 
 """
 Clase Celda:

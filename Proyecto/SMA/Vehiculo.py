@@ -2,9 +2,7 @@
 from mesa import Agent, Model
 from mesa.time import SimultaneousActivation
 from mesa.space import MultiGrid
-#from mesa.visualization.modules import CanvasGrid
-#from mesa.visualization.ModularVisualization import ModularServer
-import random
+from Agentes import SemaforoVehicular
 from queue import PriorityQueue
 import networkx as nx
 
@@ -72,6 +70,37 @@ class Vehiculo(Agent):
             grafo.add_node(estacionamiento)
 
         return grafo
+    
+    def validar_estado_semaforo(self, pos):
+        """
+        Verifica si el semáforo en la posición dada permite el paso.
+
+        Args:
+            pos (tuple): Coordenada de la próxima posición.
+
+        Returns:
+            bool: True si el semáforo está en verde o si no hay semáforo en la posición, False de lo contrario.
+        """
+        # Obtener los agentes en la posición objetivo
+        agentes_en_pos = self.model.grid.get_cell_list_contents([pos])
+        
+        # Filtrar los semáforos vehiculares en la posición
+        semaforos = [agente for agente in agentes_en_pos if isinstance(agente, SemaforoVehicular)]
+
+        # Si no hay semáforos en la posición, el paso está permitido
+        if not semaforos:
+            print(f"Vehículo {self.unique_id}: No hay semáforo en {pos}, paso permitido.")
+            return True
+
+        # Verificar el estado de los semáforos
+        for semaforo in semaforos:
+            if semaforo.state == "rojo":
+                print(f"Vehículo {self.unique_id}: Semáforo en {pos} está en ROJO, paso no permitido.")
+                return False  # Detenerse si al menos un semáforo está en rojo
+
+        # Si todos los semáforos permiten el paso
+        print(f"Vehículo {self.unique_id}: Semáforo en {pos} está en VERDE, paso permitido.")
+        return True
 
     def validar_vecinos(self, radio=2, filtro=None):
         """Valida los vecinos dentro de un radio y aplica un filtro opcional."""
@@ -119,14 +148,38 @@ class Vehiculo(Agent):
                 )
 
         if siguiente_pos:
-            if self.validar_restricciones(siguiente_pos):
-                self.model.grid.move_agent(self, siguiente_pos)
-                self.pos_actual = siguiente_pos
-                print(f"Vehículo {self.unique_id}: Se movió a {self.pos_actual}")
-            else:
-                print(f"Vehículo {self.unique_id}: Esperando en {self.pos_actual} debido a restricciones.")
-        else:
-            print(f"Vehículo {self.unique_id}: No tiene movimientos válidos.")
+            # Validar estado del semáforo antes de moverse
+            if not self.validar_estado_semaforo(siguiente_pos):
+                print(f"Vehículo {self.unique_id}: Detenido en {self.pos_actual} por semáforo en rojo.")
+                return  # Detenerse si el semáforo no permite el paso
+
+            self.model.grid.move_agent(self, siguiente_pos)
+            self.pos_actual = siguiente_pos
+            print(f"Vehículo {self.unique_id}: Se movió a {self.pos_actual}")
+
+    def validar_semaforo(self, pos):
+        """
+        Verifica si el semáforo en la posición dada está en verde.
+
+        Args:
+            pos (tuple): Coordenada de la próxima posición.
+
+        Returns:
+            bool: True si el semáforo permite el paso, False de lo contrario.
+        """
+        agentes_en_pos = self.model.grid.get_cell_list_contents([pos])
+        semaforos = [a for a in agentes_en_pos if isinstance(a, SemaforoVehicular)]
+
+        if not semaforos:
+            # Si no hay semáforo, se asume que el paso está permitido
+            return True
+
+        for semaforo in semaforos:
+            if semaforo.state == "rojo":
+                return False  # Semáforo en rojo, no se permite el paso
+
+        return True  # Todos los semáforos en verde
+
 
     def validar_restricciones(self, celda):
         """

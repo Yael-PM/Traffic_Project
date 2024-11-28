@@ -1,8 +1,8 @@
 from mesa import Model
 from mesa.time import SimultaneousActivation
 from mesa.space import MultiGrid
-from Agentes import  Celda, SemaforoVehicular, SemaforoPeatonal, Peaton
-from Vehiculo import Vehiculo
+from Agentes import  Celda, SemaforoVehicular, SemaforoPeatonal, Peaton, Vehiculo
+#from Vehiculo import Vehiculo
 import random
 
 class ModeloTrafico(Model):
@@ -140,14 +140,14 @@ class ModeloTrafico(Model):
     def step(self):
         """ Realiza un paso de la simulación con depuración."""
 
-        print(f"Iniciando step {self.step_count}...")
+        #print(f"Iniciando step {self.step_count}...")
         self.schedule.step()  # Avanza los agentes
 
         # Incrementa el contador de pasos
         self.step_count += 1
 
         self.grupo_activo = 1 if (self.step_count // 10) % 2 == 0 else 2
-        print(f"Grupo activo: {self.grupo_activo}")
+        #print(f"Grupo activo: {self.grupo_activo}")
 
         # Actualiza semáforos
         for grupo in self.grupo_semaforos:
@@ -161,7 +161,7 @@ class ModeloTrafico(Model):
                 if vehicular:
                     nuevo_estado = "verde" if grupo["grupo"] == self.grupo_activo else "rojo"
                     vehicular.cambiar_estado(nuevo_estado)
-                    print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
+                    #print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
 
             if "peatonales" in grupo:
                 peatonal_pos = grupo["peatonales"]
@@ -172,18 +172,18 @@ class ModeloTrafico(Model):
                 )
                 if peatonal:
                     peatonal.estado = "verde" if grupo["grupo"] == self.grupo_activo else "rojo"
-                    print(f"Semáforo peatonal en {peatonal_pos}: {peatonal.estado}")
+                    #print(f"Semáforo peatonal en {peatonal_pos}: {peatonal.estado}")
 
         # Asegurarse de que todos los semáforos vehiculares cambien de estado
         for semaforo in self.schedule.agents:
             if isinstance(semaforo, SemaforoVehicular):
                 nuevo_estado = "verde" if semaforo.grupo == self.grupo_activo else "rojo"
                 semaforo.cambiar_estado(nuevo_estado)
-                print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
+                #print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
 
         semaforos = [agent for agent in self.schedule.agents if isinstance(agent, SemaforoVehicular) or isinstance(agent, SemaforoPeatonal)]
 
-        print("Lista de todos los semáforos en el mapa")
+        #print("Lista de todos los semáforos en el mapa")
         for semaforo in semaforos:
             tipo = "Vehicular" if isinstance(semaforo, SemaforoVehicular) else "Peatonal"
-            print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")
+            #print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")

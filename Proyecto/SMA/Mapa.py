@@ -2,8 +2,8 @@ from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 from Modelo import ModeloTrafico
 from ConfMapa import semaforosV, semaforosP, transitables, intransitables, banquetas, estacionamientos
-from Agentes import  Peaton, Celda, SemaforoVehicular, SemaforoPeatonal
-from Vehiculo import Vehiculo
+from Agentes import  Peaton, Celda, SemaforoVehicular, SemaforoPeatonal, Vehiculo
+#from Vehiculo import Vehiculo
 
 def agentPortrayal(agent):
     """Función de representación de los agentes."""
@@ -47,7 +47,7 @@ def agentPortrayal(agent):
             "h": 1 
         }
     elif isinstance(agent, SemaforoPeatonal):
-        color = "green" if agent.estado == "verde" else "red"
+        color = "green" if agent.state == "verde" else "red"
         return {
             "Shape":"rect",
             "Filled":"true",
@@ -71,5 +71,5 @@ model_params = {
     "estacionamientos": estacionamientos
 }
 server = ModularServer(ModeloTrafico, [canvas_element], "Traffic Simulation", model_params)
-server.port = 8521
+server.port = 852
 server.launch()
