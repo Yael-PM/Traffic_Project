@@ -5,17 +5,21 @@ using UnityEngine.Networking;
 
 public class Conexion : MonoBehaviour
 {
-    const int NUM_OBJECTS = 5;
-    GameObject activeCar; // Solo este carro será usado
     [SerializeField]
-    List<Vector3> positions;
+    List<GameObject> activeCars; // Lista de carros activos
+    [SerializeField]
+    List<Vector3> vehiclePositions;
+    [SerializeField]
+    List<Vector3> pedestrianPositions;
+    [SerializeField]
+    List<Vector3> cellPositions;
 
     float timeToUpdate = 1.0f;
     private float timer;
 
     public float dt;
 
-    // Lista de nombres de GameObjects posibles
+    // Lista de nombres de GameObjects posibles para vehículos
     string[] carNames = { "Eduardo_Car", "Emiliano_Car", "Carro_Yael", "Carro_Olmos" };
 
     IEnumerator RequestPositions()
@@ -28,34 +32,50 @@ public class Conexion : MonoBehaviour
             www.SetRequestHeader("Content-Type", "application/json");
 
             yield return www.SendWebRequest();
-            if (www.result == UnityWebRequest.Result.ConnectionError)
+            if (www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.ProtocolError)
             {
                 Debug.Log(www.error);
             }
             else
             {
                 string msg = www.downloadHandler.text;
-                Points step = Points.CreateFromJSON(msg);
+                SimulationData data = SimulationData.CreateFromJSON(msg);
 
-                if (positions.Count == 0)
-                {
-                    // Inicialización de posiciones
-                    positions = new List<Vector3>();
-                }
+                if (vehiclePositions == null) vehiclePositions = new List<Vector3>();
+                if (pedestrianPositions == null) pedestrianPositions = new List<Vector3>();
+                if (cellPositions == null) cellPositions = new List<Vector3>();
 
-                positions.Clear();
-                foreach (Point pos in step.points)
+                vehiclePositions.Clear();
+                pedestrianPositions.Clear();
+                cellPositions.Clear();
+
+                // Procesar las posiciones de los vehículos
+                foreach (Point pos in data.vehiculos)
                 {
                     Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
-                    positions.Add(myP);
+                    vehiclePositions.Add(myP);
                 }
 
-                // Mover el carro activo a las posiciones actualizadas
-                if (activeCar != null && positions.Count > 0)
+                // Procesar las posiciones de los peatones
+                foreach (Point pos in data.peatones)
                 {
-                    for (int i = 0; i < positions.Count; i++)
+                    Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
+                    pedestrianPositions.Add(myP);
+                }
+
+                // Procesar las posiciones de las celdas
+                foreach (Point pos in data.celdas)
+                {
+                    Vector3 myP = new Vector3(pos.x, 0.0f, pos.z);
+                    cellPositions.Add(myP);
+                }
+
+                // Mover todos los carros activos a las posiciones actualizadas
+                if (activeCars != null && activeCars.Count > 0 && vehiclePositions.Count > 0)
+                {
+                    for (int i = 0; i < Mathf.Min(activeCars.Count, vehiclePositions.Count); i++)
                     {
-                        activeCar.transform.position = positions[i];
+                        activeCars[i].transform.position = vehiclePositions[i];
                     }
                 }
             }
@@ -65,19 +85,33 @@ public class Conexion : MonoBehaviour
     void Start()
     {
         timer = timeToUpdate;
-        positions = new List<Vector3>();
+        vehiclePositions = new List<Vector3>();
+        pedestrianPositions = new List<Vector3>();
+        cellPositions = new List<Vector3>();
+        activeCars = new List<GameObject>();
 
-        // Selección aleatoria de un GameObject para ser el único activo
-        string randomCarName = carNames[Random.Range(0, carNames.Length)];
-        activeCar = GameObject.Find(randomCarName);
-
-        if (activeCar == null)
+        // Selección de varios GameObjects para ser activos
+        foreach (string carName in carNames)
         {
-            Debug.LogError($"GameObject with name {randomCarName} not found in the scene!");
+            GameObject car = GameObject.Find(carName);
+            if (car != null)
+            {
+                activeCars.Add(car);
+                Debug.Log($"Car added to active list: {carName}");
+            }
+            else
+            {
+                Debug.LogWarning($"GameObject with name {carName} not found in the scene!");
+            }
+        }
+
+        if (activeCars.Count == 0)
+        {
+            Debug.LogError("No active cars found in the scene!");
         }
         else
         {
-            Debug.Log($"Selected active car: {randomCarName}");
+            Debug.Log($"{activeCars.Count} cars added to active list.");
         }
 
         StartCoroutine(RequestPositions());
@@ -91,5 +125,18 @@ public class Conexion : MonoBehaviour
             timer = timeToUpdate;
             StartCoroutine(RequestPositions());
         }
+    }
+}
+
+[System.Serializable]
+public class SimulationData
+{
+    public List<Point> celdas;
+    public List<Point> peatones;
+    public List<Point> vehiculos;
+
+    public static SimulationData CreateFromJSON(string jsonString)
+    {
+        return JsonUtility.FromJson<SimulationData>(jsonString);
     }
 }
