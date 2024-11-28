@@ -87,7 +87,8 @@ class ModeloTrafico(Model):
         # Crear semaforos vehiculares
         for direccion, semaforos in semaforosV.items():
             for idx, (x, y) in enumerate(semaforos):
-                grupo = 1 if idx % 2 == 0 else 2
+                #grupo = 1 if idx % 2 == 0 else 2
+                grupo = 1 if direccion == 'V' else 2
                 semaforo_vehicular = SemaforoVehicular(f"semaforoV_{x}_{y}", self, (x, y), direccion, grupo)
                 if self.grid.is_cell_empty((x, y)):
                     self.grid.place_agent(semaforo_vehicular, (x, y))

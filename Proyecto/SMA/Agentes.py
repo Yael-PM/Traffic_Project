@@ -485,37 +485,37 @@ class SemaforoVehicular(Agent):
     def cambiar_estado(self, nuevo_estado):
         """Cambia el estado del semáforo y de los semáforos adyacentes."""
         self.state = nuevo_estado
-        print(f"Semáforo vehicular {self.unique_id}: Cambiando a {nuevo_estado.upper()}.")
+        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a {nuevo_estado.upper()}.")
         for semaforo in self.obtener_semaforos_adyacentes():
             semaforo.state = nuevo_estado
-            print(f"Semáforo vehicular: Cambiando a {nuevo_estado.upper()}.")
+            #print(f"Semáforo vehicular: Cambiando a {nuevo_estado.upper()}.")
 
     def step(self):
         """Controla los cambios de estado."""
         # Verificar si el semáforo peatonal ha detectado peatones
         if self.semaforoP.detectar_peatones():
-            print(f"Semáforo vehicular {self.unique_id}: Peatones detectados, cambiando a ROJO.")
+            #print(f"Semáforo vehicular {self.unique_id}: Peatones detectados, cambiando a ROJO.")
             self.state = self.estados[2]  # Cambiar a "rojo"
             self.semaforoP.state = self.semaforoP.estados[0]  # Cambiar semáforo peatonal a "verde"
         else:
             # Actualiza el estado del semáforo vehicular basado en el grupo activo del modelo
             nuevo_estado = "verde" if self.grupo == self.model.grupo_activo else "rojo"
             self.cambiar_estado(nuevo_estado)
-            print(f"Semáforo vehicular {self.unique_id}: {self.state}")
+            #print(f"Semáforo vehicular {self.unique_id}: {self.state}")
     
             # Asegurarse de que todos los semáforos vehiculares cambien de estado
             for semaforo in self.model.schedule.agents:
                 if isinstance(semaforo, SemaforoVehicular):
                     nuevo_estado = "verde" if semaforo.grupo == self.model.grupo_activo else "rojo"
                     semaforo.cambiar_estado(nuevo_estado)
-                    print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
+                    #print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
     
             semaforos = [agent for agent in self.model.schedule.agents if isinstance(agent, SemaforoVehicular) or isinstance(agent, SemaforoPeatonal)]
     
-            print("Lista de todos los semáforos en el mapa")
+            #print("Lista de todos los semáforos en el mapa")
             for semaforo in semaforos:
                 tipo = "Vehicular" if isinstance(semaforo, SemaforoVehicular) else "Peatonal"
-                print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")
+                #print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")
 
 """
 Clase Celda:
