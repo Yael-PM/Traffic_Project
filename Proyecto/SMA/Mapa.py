@@ -77,7 +77,7 @@ def agentPortrayal(agent):
             "h": 1 
         }
     elif isinstance(agent, SemaforoPeatonal):
-        color = "#00FF00" if agent.estado == "verde" else "red"
+        color = "#00FF00" if agent.state == "verde" else "red"
         return {
             "Shape":"rect",
             "Filled":"true",

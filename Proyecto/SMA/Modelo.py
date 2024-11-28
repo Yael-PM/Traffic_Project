@@ -37,7 +37,7 @@ class ModeloTrafico(Model):
             estacionamientos (list): Lista de estacionamientos en el sistema.
         """
         super().__init__()
-        self.grid = MultiGrid(width, height, True)
+        self.grid = MultiGrid(width, height, False)
         self.schedule = SimultaneousActivation(self)
         self.semaforosV = semaforosV
         self.semaforosP = semaforosP
@@ -54,7 +54,7 @@ class ModeloTrafico(Model):
         for direction, celdas in transitables.items():
             for x, y in celdas:
                 # Crear el agente Celda para cada coordenada (x, y)
-                celda = Celda((x, y), self, direction, color="green", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
+                celda = Celda((x, y), self, direction, color="white", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
                 self.grid.place_agent(celda, (x, y))  # Colocar la celda en el grid
                 self.schedule.add(celda)  # Añadir el agente al planificador
 
@@ -81,6 +81,7 @@ class ModeloTrafico(Model):
             else:
                 self.grid.remove_agent(self.grid.get_cell_list_contents((x, y))[0])
                 self.grid.place_agent(semaforo_peatonal, (x, y))
+            self.schedule.add(semaforo_peatonal)  # Añadir al schedule
             self.grupo_semaforos.append({"peatonales": (x, y), "grupo": 1})
 
         # Crear semaforos vehiculares
@@ -116,7 +117,7 @@ class ModeloTrafico(Model):
             while destino == origen:
                 destino = random.choice(self.banquetas)
 
-            print(f"Peatón {i}: Origen = {origen}, Destino = {destino}")
+        # #     print(f"Peatón {i}: Origen = {origen}, Destino = {destino}")
             peaton = Peaton(i, self, origen, destino)
             self.grid.place_agent(peaton, origen)
             self.schedule.add(peaton)
@@ -147,42 +148,3 @@ class ModeloTrafico(Model):
 
         self.grupo_activo = 1 if (self.step_count // 10) % 2 == 0 else 2
         print(f"Grupo activo: {self.grupo_activo}")
-
-        # Actualiza semáforos
-        for grupo in self.grupo_semaforos:
-            if "vehiculares" in grupo:
-                vehicular_pos = grupo["vehiculares"]
-                vehicular = next(
-                    (agent for agent in self.grid.get_cell_list_contents(vehicular_pos)
-                    if isinstance(agent, SemaforoVehicular)),
-                    None
-                )
-                if vehicular:
-                    nuevo_estado = "verde" if grupo["grupo"] == self.grupo_activo else "rojo"
-                    vehicular.cambiar_estado(nuevo_estado)
-                    print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
-
-            if "peatonales" in grupo:
-                peatonal_pos = grupo["peatonales"]
-                peatonal = next(
-                    (agent for agent in self.grid.get_cell_list_contents(peatonal_pos)
-                    if isinstance(agent, SemaforoPeatonal)),
-                    None
-                )
-                if peatonal:
-                    peatonal.estado = "verde" if grupo["grupo"] == self.grupo_activo else "rojo"
-                    print(f"Semáforo peatonal en {peatonal_pos}: {peatonal.estado}")
-
-        # Asegurarse de que todos los semáforos vehiculares cambien de estado
-        for semaforo in self.schedule.agents:
-            if isinstance(semaforo, SemaforoVehicular):
-                nuevo_estado = "verde" if semaforo.grupo == self.grupo_activo else "rojo"
-                semaforo.cambiar_estado(nuevo_estado)
-                print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
-
-        semaforos = [agent for agent in self.schedule.agents if isinstance(agent, SemaforoVehicular) or isinstance(agent, SemaforoPeatonal)]
-
-        print("Lista de todos los semáforos en el mapa")
-        for semaforo in semaforos:
-            tipo = "Vehicular" if isinstance(semaforo, SemaforoVehicular) else "Peatonal"
-            print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")
