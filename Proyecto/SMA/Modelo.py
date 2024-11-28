@@ -1,7 +1,8 @@
 from mesa import Model
 from mesa.time import SimultaneousActivation
 from mesa.space import MultiGrid
-from Agentes import Vehiculo, Celda, SemaforoVehicular, SemaforoPeatonal, Peaton
+from Agentes import  Celda, SemaforoVehicular, SemaforoPeatonal, Peaton
+from Vehiculo import Vehiculo
 import random
 
 class ModeloTrafico(Model):
@@ -37,7 +38,7 @@ class ModeloTrafico(Model):
             estacionamientos (list): Lista de estacionamientos en el sistema.
         """
         super().__init__()
-        self.grid = MultiGrid(width, height, True)
+        self.grid = MultiGrid(width, height, False)
         self.schedule = SimultaneousActivation(self)
         self.semaforosV = semaforosV
         self.semaforosP = semaforosP
@@ -54,7 +55,7 @@ class ModeloTrafico(Model):
         for direction, celdas in transitables.items():
             for x, y in celdas:
                 # Crear el agente Celda para cada coordenada (x, y)
-                celda = Celda((x, y), self, direction, color="green", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
+                celda = Celda((x, y), self, direction, color="white", layer=1, width=1, height=1)  # Definir color, capa y dimensiones
                 self.grid.place_agent(celda, (x, y))  # Colocar la celda en el grid
                 self.schedule.add(celda)  # Añadir el agente al planificador
 
@@ -73,19 +74,28 @@ class ModeloTrafico(Model):
             self.schedule.add(celda)
 
         # Crear agentes para los semáforos de peatones
-        for (x, y) in semaforosP:
-            # Crear el agente Celda para cada coordenada (x, y)
-            semaforo_peatonal = SemaforoPeatonal(f"semaforoP_{x}_{y}",self,(x,y))
-            self.grid.place_agent(semaforo_peatonal,(x,y))
-            self.schedule.add(semaforo_peatonal)
+        for idx, (x, y) in enumerate(semaforosP):
+            semaforo_peatonal = SemaforoPeatonal(f"semaforoP_{x}_{y}", self, (x, y))
+            grupo = 1 if (x, y) == semaforosP[0] else 2
+            if self.grid.is_cell_empty((x, y)):
+                self.grid.place_agent(semaforo_peatonal, (x, y))
+            else:
+                self.grid.remove_agent(self.grid.get_cell_list_contents((x, y))[0])
+                self.grid.place_agent(semaforo_peatonal, (x, y))
+            self.grupo_semaforos.append({"peatonales": (x, y), "grupo": 1})
 
         # Crear semaforos vehiculares
         for direccion, semaforos in semaforosV.items():
-            for idx, (x,y) in enumerate(semaforos):
+            for idx, (x, y) in enumerate(semaforos):
                 grupo = 1 if idx % 2 == 0 else 2
-                semaforo_vehicular = SemaforoVehicular(f"semaforoV_{x}_{y}", self, (x, y), direccion, None, grupo)
-                self.grid.place_agent(semaforo_vehicular,(x, y))
+                semaforo_vehicular = SemaforoVehicular(f"semaforoV_{x}_{y}", self, (x, y), direccion, grupo)
+                if self.grid.is_cell_empty((x, y)):
+                    self.grid.place_agent(semaforo_vehicular, (x, y))
+                else:
+                    self.grid.remove_agent(self.grid.get_cell_list_contents((x, y))[0])
+                    self.grid.place_agent(semaforo_vehicular, (x, y))
                 self.schedule.add(semaforo_vehicular)
+                self.grupo_semaforos.append({"vehiculares": (x, y), "grupo": grupo})
 
         # Crear agentes para los estacionamientos
         for nombre, (x, y) in estacionamientos.items():
@@ -107,7 +117,7 @@ class ModeloTrafico(Model):
             while destino == origen:
                 destino = random.choice(self.banquetas)
 
-            print(f"Peatón {i}: Origen = {origen}, Destino = {destino}")
+        # #     print(f"Peatón {i}: Origen = {origen}, Destino = {destino}")
             peaton = Peaton(i, self, origen, destino)
             self.grid.place_agent(peaton, origen)
             self.schedule.add(peaton)
@@ -136,31 +146,44 @@ class ModeloTrafico(Model):
         # Incrementa el contador de pasos
         self.step_count += 1
 
-        if not self.grupo_semaforos:
-            print("No hay grupos de semáforos definidos.")
-            return
-
         self.grupo_activo = 1 if (self.step_count // 10) % 2 == 0 else 2
         print(f"Grupo activo: {self.grupo_activo}")
 
         # Actualiza semáforos
-        for i, grupo in enumerate(self.grupo_semaforos):
-            vehicular_pos = grupo["vehiculares"]
-            vehicular = next(
-                (agent for agent in self.grid.get_cell_list_contents(vehicular_pos)
-                if isinstance(agent, SemaforoVehicular)),
-                None
-            )
-            if vehicular:
-                vehicular.state = "verde" if i == grupo_activo else "rojo"
-                print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
+        for grupo in self.grupo_semaforos:
+            if "vehiculares" in grupo:
+                vehicular_pos = grupo["vehiculares"]
+                vehicular = next(
+                    (agent for agent in self.grid.get_cell_list_contents(vehicular_pos)
+                    if isinstance(agent, SemaforoVehicular)),
+                    None
+                )
+                if vehicular:
+                    nuevo_estado = "verde" if grupo["grupo"] == self.grupo_activo else "rojo"
+                    vehicular.cambiar_estado(nuevo_estado)
+                    print(f"Semáforo vehicular en {vehicular_pos}: {vehicular.state}")
 
-            for peatonal_pos in grupo["peatonales"]:
+            if "peatonales" in grupo:
+                peatonal_pos = grupo["peatonales"]
                 peatonal = next(
                     (agent for agent in self.grid.get_cell_list_contents(peatonal_pos)
                     if isinstance(agent, SemaforoPeatonal)),
                     None
                 )
                 if peatonal:
-                    peatonal.estado = "verde" if vehicular.grupo == self.grupo_activo else "rojo"
+                    peatonal.estado = "verde" if grupo["grupo"] == self.grupo_activo else "rojo"
                     print(f"Semáforo peatonal en {peatonal_pos}: {peatonal.estado}")
+
+        # Asegurarse de que todos los semáforos vehiculares cambien de estado
+        for semaforo in self.schedule.agents:
+            if isinstance(semaforo, SemaforoVehicular):
+                nuevo_estado = "verde" if semaforo.grupo == self.grupo_activo else "rojo"
+                semaforo.cambiar_estado(nuevo_estado)
+                print(f"Semáforo vehicular {semaforo.unique_id}: {semaforo.state}")
+
+        semaforos = [agent for agent in self.schedule.agents if isinstance(agent, SemaforoVehicular) or isinstance(agent, SemaforoPeatonal)]
+
+        print("Lista de todos los semáforos en el mapa")
+        for semaforo in semaforos:
+            tipo = "Vehicular" if isinstance(semaforo, SemaforoVehicular) else "Peatonal"
+            print(f"{tipo} {semaforo.unique_id}: {semaforo.state}")

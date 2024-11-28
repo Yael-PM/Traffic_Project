@@ -70,5 +70,5 @@ model = ModeloTrafico(25, 25, transitables, estacionamientos, intransitables, se
 canvas_element = CanvasGrid(agentPortrayal, 25, 25, 500, 500)
 # Crear y correr el servidor
 server = ModularServer(ModeloTrafico, [canvas_element], "Traffic Simulation", {"width": 25, "height": 25, "transitables": transitables, "estacionamientos": estacionamientos, "intransitables": intransitables, "semaforos": semaforos})
-server.port = 852
+server.port = 8522
 server.launch() 

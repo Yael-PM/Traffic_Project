@@ -24,6 +24,7 @@ from mesa.space import MultiGrid
 #from mesa.visualization.ModularVisualization import ModularServer
 import random
 from queue import PriorityQueue
+import networkx as nx
 
 """
 Clase Vehiculo:
@@ -50,87 +51,173 @@ Métodos:
     validar_freno: Valida si el vehículo delante en su celda siguiente puede frenar.
     step(): Realiza un paso del movimiento del vehículo, verificando todas las condiciones necesarias.
 """
-from queue import PriorityQueue
 
 class Vehiculo(Agent):
+    """Agente vehículo que navega hacia su destino utilizando un grafo conectado."""
+
     def __init__(self, unique_id, model, origen, destino, semaforosV, transitables, estacionamientos):
         super().__init__(unique_id, model)
         self.origen = origen
+        self.pos_actual = origen
         self.destino = destino
         self.semaforosV = semaforosV
         self.transitables = transitables
         self.estacionamientos = estacionamientos
+        self.grafo = self.crear_grafo_conectado()
+        self.ruta = []
 
-    def validar_direccion(self):
-        """
-        Verifica las celdas transitables adyacentes y selecciona la más cercana al destino.
-        Retorna la coordenada de la celda válida más cercana al destino o None si no hay opciones.
-        """
-        x, y = self.origen
-        adyacentes = [
-            (x - 1, y), (x + 1, y),  # Coordenadas arriba y abajo
-            (x, y - 1), (x, y + 1),  # Coordenadas izquierda y derecha
-        ]
+    def crear_grafo_conectado(self):
+        """Construye un grafo dirigido basado en las celdas transitables y estacionamientos."""
+        grafo = nx.DiGraph()
 
-        # Filtrar las celdas transitables
-        celdas_validas = [
-            coord for coord in adyacentes
-            if any(coord in celdas for celdas in self.transitables.values())
-        ]
+        # Agregar nodos y conexiones para transitables
+        for direccion, nodos in self.transitables.items():
+            for nodo in nodos:
+                if direccion == "N":
+                    vecino = (nodo[0], nodo[1] + 1)
+                elif direccion == "S":
+                    vecino = (nodo[0], nodo[1] - 1)
+                elif direccion == "E":
+                    vecino = (nodo[0] + 1, nodo[1])
+                elif direccion == "O":
+                    vecino = (nodo[0] - 1, nodo[1])
+                else:
+                    continue
+                if vecino in nodos or vecino in [c for lista in self.transitables.values() for c in lista]:
+                    grafo.add_edge(nodo, vecino, direccion=direccion)
 
-        # Si no hay celdas válidas, retorna None
-        if not celdas_validas:
-            print(f"No hay direcciones transitables desde el origen {self.origen}.")
-            return None
+        # Agregar estacionamientos
+        for estacionamiento in self.estacionamientos.values():
+            grafo.add_node(estacionamiento)
 
-        # Ordenar celdas válidas según su distancia Manhattan al destino
-        celdas_validas.sort(key=lambda coord: abs(coord[0] - self.destino[0]) + abs(coord[1] - self.destino[1]))
+        return grafo
 
-        # Seleccionar la celda que reduce la distancia al destino
-        mejor_celda = celdas_validas[0]
+    def validar_vecinos(self, radio=2, filtro=None):
+        """Valida los vecinos dentro de un radio y aplica un filtro opcional."""
+        vecinos = self.model.grid.get_neighborhood(
+            self.pos_actual, moore=False, include_center=False, radius=radio
+        )
+        if filtro:
+            vecinos = [v for v in vecinos if filtro(v)]
+        return vecinos
 
-        # Evitar ciclos: no regresar inmediatamente a una celda reciente
-        if hasattr(self, 'ultima_posicion') and mejor_celda == self.ultima_posicion:
-            if len(celdas_validas) > 1:  # Si hay otras opciones, elige la segunda mejor
-                mejor_celda = celdas_validas[1]
+    def calcular_ruta(self):
+        """Calcula la ruta más corta al destino utilizando A*."""
+        if self.destino not in self.grafo.nodes:
+            print(f"Destino {self.destino} no es transitable ni un estacionamiento.")
+            return []
+        try:
+            ruta = nx.astar_path(
+                self.grafo, source=self.pos_actual, target=self.destino, heuristic=self.distancia, weight='weight'
+            )
+            print(f"Ruta calculada para el vehículo {self.unique_id}: {ruta}")
+            return ruta
+        except nx.NetworkXNoPath:
+            print(f"No hay ruta del origen {self.pos_actual} al destino {self.destino}.")
+            return []
 
-        print(f"Puedo moverme a la coordenada {mejor_celda}.")
-        return mejor_celda
+    def moverse(self):
+        """Realiza el movimiento del vehículo, incluyendo validaciones."""
+        if self.pos_actual in self.estacionamientos.values():
+            if self.salir_estacionamiento():
+                return
 
-    def moverse(self, coordenada):
-        """
-        Mueve al agente a la coordenada especificada si está en las celdas transitables.
+        if not self.ruta or self.pos_actual not in self.ruta:
+            self.ruta = self.calcular_ruta()
 
-        Parámetros:
-            coordenada (tuple): La nueva posición a la que se moverá.
-        """
-        # Verifica si la coordenada es válida y transitable
-        if any(coordenada in celdas for celdas in self.transitables.values()):
-            # Mueve al agente en el modelo
-            self.model.grid.move_agent(self, coordenada)
-            self.origen = coordenada  # Actualiza el origen
-            print(f"Me moví directamente a la posición {self.origen}.")
+        siguiente_pos = None
+        if self.ruta:
+            siguiente_pos = self.ruta.pop(0)
         else:
-            print(f"No puedo moverme a la posición {coordenada} porque no está en transitables.")
+            vecinos_validos = self.validar_vecinos(
+                filtro=lambda v: (self.pos_actual, v) in self.grafo.edges
+            )
+            if vecinos_validos:
+                siguiente_pos = min(
+                    vecinos_validos, key=lambda v: self.distancia(v, self.destino)
+                )
+
+        if siguiente_pos:
+            if self.validar_restricciones(siguiente_pos):
+                self.model.grid.move_agent(self, siguiente_pos)
+                self.pos_actual = siguiente_pos
+                print(f"Vehículo {self.unique_id}: Se movió a {self.pos_actual}")
+            else:
+                print(f"Vehículo {self.unique_id}: Esperando en {self.pos_actual} debido a restricciones.")
+        else:
+            print(f"Vehículo {self.unique_id}: No tiene movimientos válidos.")
+
+    def validar_restricciones(self, celda):
+        """
+        Valida si el vehículo puede moverse a la celda especificada.
+        Se asegura de que no haya vehículos en conflicto en las celdas ortogonales
+        y en las celdas adyacentes.
+        """
+        print(f"Vehículo {self.unique_id}: Verificando restricciones para moverse a {celda}.")
+
+        # Determinar la dirección de movimiento
+        direccion = (celda[0] - self.pos_actual[0], celda[1] - self.pos_actual[1])
+
+        # Primera fase: Verificar celdas ortogonales
+        celdas_ortogonales = {
+            (0, 1): [(self.pos_actual[0], self.pos_actual[1] + 1)],  # Norte
+            (0, -1): [(self.pos_actual[0], self.pos_actual[1] - 1)],  # Sur
+            (1, 0): [(self.pos_actual[0] + 1, self.pos_actual[1])],  # Este
+            (-1, 0): [(self.pos_actual[0] - 1, self.pos_actual[1])],  # Oeste
+        }.get(direccion, [])
+
+        for celda_ortogonal in celdas_ortogonales:
+            agentes_en_celda = self.model.grid.get_cell_list_contents([celda_ortogonal])
+            agentes_carros = [agente for agente in agentes_en_celda if isinstance(agente, Vehiculo) and agente != self]
+            for agente in agentes_carros:
+                # Asegurarse de no detenerse por vehículos detrás
+                if (agente.pos_actual[0] - self.pos_actual[0], agente.pos_actual[1] - self.pos_actual[1]) == (-direccion[0], -direccion[1]):
+                    print(f"Vehículo {self.unique_id}: Ignorando vehículo detrás ({agente.unique_id}).")
+                    continue
+
+                if agente.pos_actual[0] == celda_ortogonal[0] or agente.pos_actual[1] == celda_ortogonal[1]:
+                    print(f"Vehículo {self.unique_id}: Encontró conflicto con {agente.unique_id} en {celda_ortogonal}")
+                    return False  # Esperar si hay un vehículo en la celda ortogonal alineado
+
+        # Segunda fase: Verificar vecinos adyacentes (8 celdas alrededor de la posición actual)
+        vecinos = self.model.grid.get_neighborhood(
+            self.pos_actual, moore=True, include_center=False, radius=1
+        )
+        for vecino in vecinos:
+            agentes_en_vecino = self.model.grid.get_cell_list_contents([vecino])
+            agentes_carros_vecino = [agente for agente in agentes_en_vecino if isinstance(agente, Vehiculo) and agente != self]
+            if agentes_carros_vecino:
+                print(f"Vehículo {self.unique_id}: Esperando porque encontró vehículos cruzando en vecino {vecino}: {agentes_carros_vecino}")
+                return False
+
+        # Si pasa ambas fases, se permite el movimiento
+        print(f"Vehículo {self.unique_id}: No se encontraron restricciones para moverse a {celda}.")
+        return True
+
+    def salir_estacionamiento(self):
+        """Mueve al vehículo desde el estacionamiento a una celda conectada al grafo o transitable."""
+        vecinos_conectados = self.validar_vecinos(filtro=lambda v: v in self.grafo.nodes)
+        if vecinos_conectados:
+            siguiente_pos = vecinos_conectados[0]
+        else:
+            vecinos_transitables = self.validar_vecinos(filtro=lambda v: v in [c for lista in self.transitables.values() for c in lista])
+            siguiente_pos = vecinos_transitables[0] if vecinos_transitables else None
+
+        if siguiente_pos and self.validar_restricciones(siguiente_pos):
+            self.model.grid.move_agent(self, siguiente_pos)
+            self.pos_actual = siguiente_pos
+            print(f"Vehículo {self.unique_id}: Salió del estacionamiento hacia {self.pos_actual}")
+            return True
+        return False
+
+    def distancia(self, pos1, pos2):
+        """Calcula la distancia Manhattan entre dos posiciones."""
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
     def step(self):
-        """
-        Método ejecutado en cada paso de la simulación.
-        El agente valida direcciones y se mueve hacia su destino.
-        """
-        if self.origen == self.destino:
-            print(f"El vehículo {self.unique_id} ha llegado a su destino {self.destino}.")
-            return  # Detener el movimiento si ya llegó al destino
-
-        # Obtener la mejor coordenada para avanzar hacia el destino
-        coordenada = self.validar_direccion()
-        if coordenada:
-            # Almacena la posición actual antes de moverse
-            self.ultima_posicion = self.origen
-            self.moverse(coordenada)
-        else:
-            print(f"El agente {self.unique_id} no puede moverse en este paso.")
-
+        """Realiza un paso en la simulación."""
+        print(f"Vehículo {self.unique_id}: Posición actual: {self.pos_actual}, Destino: {self.destino}")
+        self.moverse()
 
 """
 Clase Peaton:
@@ -161,7 +248,7 @@ class Peaton(Agent):
         Calcula la ruta desde el origen hasta el destino usando un algoritmo simple de A*.
         """
         if destino is None or self.origen is None:
-            print(f"Peatón {self.unique_id}: Origen o destino inválidos.") 
+            #print(f"Peatón {self.unique_id}: Origen o destino inválidos.") 
             return []
 
         start = self.origen
@@ -175,14 +262,14 @@ class Peaton(Agent):
             _, current = open_set.get()
 
             if current == destino:
-                print(f"Peatón {self.unique_id}: Ruta encontrada.")
+                #print(f"Peatón {self.unique_id}: Ruta encontrada.")
                 return self.reconstruir_camino(came_from,current)
 
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 neighbor = (current[0] + dx, current[1] + dy)
 
                 if neighbor not in self.model.banquetas :
-                    print(f"Peatón {self.unique_id}: Celda vecina {neighbor} no es transitable.") 
+                    #print(f"Peatón {self.unique_id}: Celda vecina {neighbor} no es transitable.") 
                     continue
 
                 tentative_g_score = g_score[current] + 1
@@ -192,7 +279,7 @@ class Peaton(Agent):
                     f_score[neighbor] = tentative_g_score + self.distancia(neighbor, destino)
                     open_set.put((f_score[neighbor], neighbor))
 
-        print(f"Peatón {self.unique_id} no encontró una ruta válida.")
+        #print(f"Peatón {self.unique_id} no encontró una ruta válida.")
         return []  # No se encontró un camino
 
     def reconstruir_camino(self, came_from, current):
@@ -211,10 +298,10 @@ class Peaton(Agent):
     def moverse(self):
         """Movimiento del peatón siguiendo la ruta."""
         if not self.ruta:
-            print(f"Peatón {self.unique_id} no tiene ruta para moverse.")
+            #print(f"Peatón {self.unique_id} no tiene ruta para moverse.")
             self.ruta = self.calcular_ruta(self.destino)
             if not self.ruta:
-                print(f"Peatón {self.unique_id}: No puede llegar a {self.destino}, asignando nuevo destino.")
+                #print(f"Peatón {self.unique_id}: No puede llegar a {self.destino}, asignando nuevo destino.")
                 self.asignar_nuevo_destino()
             return
         
@@ -222,9 +309,9 @@ class Peaton(Agent):
         if self.model.grid.is_cell_empty(siguiente_pos) or isinstance(self.model.grid.get_cell_list_contents(siguiente_pos)[0], Celda):
             self.model.grid.move_agent(self, siguiente_pos)
             self.ruta.pop(0)
-            print(f"Peatón {self.unique_id} se movió a {siguiente_pos}.")
+            #print(f"Peatón {self.unique_id} se movió a {siguiente_pos}.")
         else:
-            print(f"Peatón {self.unique_id} no puede moverse a {siguiente_pos} porque está ocupado.")
+            #print(f"Peatón {self.unique_id} no puede moverse a {siguiente_pos} porque está ocupado.")
             self.ruta = self.calcular_ruta(self.destino)
             if not self.ruta:
                 self.asignar_nuevo_destino()
@@ -234,13 +321,13 @@ class Peaton(Agent):
         while nuevo_destino == self.destino:
             nuevo_destino = random.choice(self.model.banquetas)
         self.destino = nuevo_destino
-        print(f"Peatón {self.unique_id}: Nuevo destino asignado {self.destino}.")
+        #print(f"Peatón {self.unique_id}: Nuevo destino asignado {self.destino}.")
         self.ruta = self.calcular_ruta(self.destino)
 
     def step(self):
         """Ejecución de un paso del agente."""
         if self.pos == self.destino:
-            print(f"Peatón {self.unique_id} alcanzó su destino: {self.destino}")
+            #print(f"Peatón {self.unique_id} alcanzó su destino: {self.destino}")
             self.asignar_nuevo_destino()
         else:
             self.moverse()
@@ -283,70 +370,104 @@ class SemaforoPeatonal(Agent):
     def cambiar_estado(self):
         if self.estado == "rojo" and self.detectar_peatones():
             self.estado = "verde"
-            print(f"Semáforo peatonal {self.unique_id}: Cambiando a VERDE.")
+            #print(f"Semáforo peatonal {self.unique_id}: Cambiando a VERDE.")
         elif self.estado == "verde" and not self.detectar_peatones():
             self.estado = "rojo"
-            print(f"Semáforo peatonal {self.unique_id}: Cambiando a ROJO.")
+            #print(f"Semáforo peatonal {self.unique_id}: Cambiando a ROJO.")
 
     def step(self):
         self.cambiar_estado()
 
 
 """
-Clase SemaforoVehicular:
+    Clase SemaforoVehicular:
 
-La clase SemaforoVehicular representa un semáforo vehicular que puede cambiar su estado entre "verde", "amarillo" y "rojo".
-Su propósito es regular el tráfico vehicular en la ciudad. pero no se comunica con los vehiculos, solo con el semáforo peatonal.
+    La clase SemaforoVehicular representa un semáforo vehicular que puede cambiar su estado entre "verde", "amarillo" y "rojo".
+    Su propósito es regular el tráfico vehicular en la ciudad. pero no se comunica con los vehiculos, solo con el semáforo peatonal.
 
-Atributos: 
-    estado(str): Indica el estado del semáforo. "verde" , "amarillo" y "rojo".
-    evento(int): Indica si el semáforo peatonal ha mandado una petición.
-    tiempo(int): Indica el tiempo restante para cambiar de estado y es mandado al semáforo peatonal.
+    Atributos: 
+        estado(str): Indica el estado del semáforo. "verde" , "amarillo" y "rojo".
+        evento(int): Indica si el semáforo peatonal ha mandado una petición.
+        tiempo(int): Indica el tiempo restante para cambiar de estado y es mandado al semáforo peatonal.
 
-Métodos:
-    sensar_vehiculos(): Sensa el número de vehículos en la intersección y lo manda al semáforo peatonal.
-    cambiar_estado(): Cambia el estado del semáforo entre "verde", "amarillo" y "rojo".
-    step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
+    Métodos:
+        sensar_vehiculos(): Sensa el número de vehículos en la intersección y lo manda al semáforo peatonal.
+        cambiar_estado(): Cambia el estado del semáforo entre "verde", "amarillo" y "rojo".
+        step(): Realiza un paso del movimiento del semáforo, verificando todas las condiciones necesarias.
 """
 class SemaforoVehicular(Agent):
-    estados = ["verde","amarillo","rojo"]
+    estados = ["verde", "amarillo", "rojo"]
 
-    def __init__(self, unique_id, model, pos, direccion, semaforoP, grupo, tiempo_amarillo=2):
+    def __init__(self, unique_id, model, pos, direccion, grupo, tiempo_amarillo=2):
         super().__init__(unique_id, model)
         self.pos = pos
         self.direccion = direccion
-        self.semaforoP = semaforoP
+        self.semaforoP = SemaforoPeatonal(unique_id, model, pos)
         self.grupo = grupo
-        self.state = "rojo"
+        self.state = self.estados[2]  # Inicialmente en "rojo"
         self.timer = 0
         self.tiempo_amarillo = tiempo_amarillo
 
+    def obtener_semaforos_adyacentes(self):
+        """Obtiene los semáforos vehiculares adyacentes."""
+        adyacentes = self.model.grid.get_neighbors(
+            self.pos,
+            moore=False,
+            include_center=False,
+            radius=1
+        )
+        return [agente for agente in adyacentes if isinstance(agente, SemaforoVehicular)]
+    
+    def cambiar_estado(self, nuevo_estado):
+        """Cambia el estado del semáforo y de los semáforos adyacentes."""
+        self.state = nuevo_estado
+        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a {nuevo_estado.upper()}.")
+        for semaforo in self.obtener_semaforos_adyacentes():
+            semaforo.state = nuevo_estado
+            #print(f"Semáforo vehicular {semaforo.unique_id}: Cambiando a {nuevo_estado.upper()}.")
+
     def step(self):
         """Controla los cambios de estado."""
-        # Controlar el cambio de estado basado en el grupo
-        if self.grupo == 1 and self.model.grupo_activo == 1:
-            if self.state == "verde":
-                self.timer += 1
-                if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
-                    self.state = "amarillo"
-                    self.timer = 0
-            elif self.state == "amarillo":
-                self.timer += 1
-                if self.timer >= self.tiempo_amarillo:
-                    self.state = "rojo"
-        elif self.grupo == 2 and self.model.grupo_activo == 2:
-            if self.state == "verde":
-                self.timer += 1
-                if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
-                    self.state = "amarillo"
-                    self.timer = 0
-            elif self.state == "amarillo":
-                self.timer += 1
-                if self.timer >= self.tiempo_amarillo:
-                    self.state = "rojo"
-        elif self.state == "rojo":
-            if self.grupo == self.model.grupo_activo:
-                self.state = "verde"
+        # Verificar si el semáforo peatonal ha detectado peatones
+        if self.semaforoP.detectar_peatones():
+            print(f"Semáforo vehicular {self.unique_id}: Peatones detectados, cambiando a ROJO.")
+            self.state = self.estados[2]  # Cambiar a "rojo"
+            self.semaforoP.estado = self.semaforoP.estados[0]  # Cambiar semáforo peatonal a "verde"
+        else:
+            # Controlar el cambio de estado basado en el grupo
+            if self.grupo == 1 and self.model.grupo_activo == 1:
+                if self.state == self.estados[0]:  # "verde"
+                    self.timer += 1
+                    if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
+                        #self.state = self.estados[1]  # Cambiar a "amarillo"
+                        self.cambiar_estado(self.estados[1])
+                        self.timer = 0
+                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
+                elif self.state == self.estados[1]:  # "amarillo"
+                    self.timer += 1
+                    if self.timer >= self.tiempo_amarillo:
+                        #self.state = self.estados[2]  # Cambiar a "rojo"
+                        self.cambiar_estado(self.estados[2])
+                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
+            elif self.grupo == 2 and self.model.grupo_activo == 2:
+                if self.state == self.estados[0]:  # "verde"
+                    self.timer += 1
+                    if self.timer >= 5:  # Cambiar a amarillo después de 5 pasos
+                        #self.state = self.estados[1]  # Cambiar a "amarillo"
+                        self.cambiar_estado(self.estados[1])
+                        self.timer = 0
+                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a AMARILLO.")
+                elif self.state == self.estados[1]:  # "amarillo"
+                    self.timer += 1
+                    if self.timer >= self.tiempo_amarillo:
+                        #self.state = self.estados[2]  # Cambiar a "rojo"
+                        self.cambiar_estado(self.estados[2])
+                        #print(f"Semáforo vehicular {self.unique_id}: Cambiando a ROJO.")
+            elif self.state == self.estados[2]:  # "rojo"
+                if self.grupo == self.model.grupo_activo:
+                    #self.state = self.estados[0]  # Cambiar a "verde"
+                    self.cambiar_estado(self.estados[0])
+                    #print(f"Semáforo vehicular {self.unique_id}: Cambiando a VERDE.")
 
 """
 Clase Celda:
