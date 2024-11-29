@@ -6,23 +6,29 @@ using UnityEngine.Networking;
 public class Conexion : MonoBehaviour
 {
     [SerializeField]
-    List<GameObject> activeCars; // Lista de carros activos
-    [SerializeField]
-    List<Vector3> vehiclePositions;
-    [SerializeField]
-    List<Vector3> pedestrianPositions;
-    [SerializeField]
-    List<Vector3> cellPositions;
+    private List<GameObject> carPrefabs; // Lista de prefabs de vehículos
 
-    float timeToUpdate = 1.0f;
+    private List<GameObject> activeCars; // Lista de vehículos activos
+    private List<Vector3> vehiclePositions;
+    private List<Vector3> pedestrianPositions;
+    private List<Vector3> cellPositions;
+
+    private float timeToUpdate = 1.0f;
     private float timer;
 
-    public float dt;
+    private void Start()
+    {
+        timer = timeToUpdate;
 
-    // Lista de nombres de GameObjects posibles para vehículos
-    string[] carNames = { "Eduardo_Car", "Emiliano_Car", "Carro_Yael", "Carro_Olmos" };
+        vehiclePositions = new List<Vector3>();
+        pedestrianPositions = new List<Vector3>();
+        cellPositions = new List<Vector3>();
+        activeCars = new List<GameObject>();
 
-    IEnumerator RequestPositions()
+        StartCoroutine(RequestPositions());
+    }
+
+    private IEnumerator RequestPositions()
     {
         WWWForm form = new WWWForm();
         string url = "http://localhost:8000/datos";
@@ -41,83 +47,79 @@ public class Conexion : MonoBehaviour
                 string msg = www.downloadHandler.text;
                 SimulationData data = SimulationData.CreateFromJSON(msg);
 
-                if (vehiclePositions == null) vehiclePositions = new List<Vector3>();
-                if (pedestrianPositions == null) pedestrianPositions = new List<Vector3>();
-                if (cellPositions == null) cellPositions = new List<Vector3>();
-
-                vehiclePositions.Clear();
-                pedestrianPositions.Clear();
-                cellPositions.Clear();
-
-                // Procesar las posiciones de los vehículos
-                foreach (Point pos in data.vehiculos)
-                {
-                    Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
-                    vehiclePositions.Add(myP);
-                }
-
-                // Procesar las posiciones de los peatones
-                foreach (Point pos in data.peatones)
-                {
-                    Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
-                    pedestrianPositions.Add(myP);
-                }
-
-                // Procesar las posiciones de las celdas
-                foreach (Point pos in data.celdas)
-                {
-                    Vector3 myP = new Vector3(pos.x, 0.0f, pos.z);
-                    cellPositions.Add(myP);
-                }
-
-                // Mover todos los carros activos a las posiciones actualizadas
-                if (activeCars != null && activeCars.Count > 0 && vehiclePositions.Count > 0)
-                {
-                    for (int i = 0; i < Mathf.Min(activeCars.Count, vehiclePositions.Count); i++)
-                    {
-                        activeCars[i].transform.position = vehiclePositions[i];
-                    }
-                }
+                UpdatePositions(data);
+                UpdateVehicles();
             }
         }
     }
 
-    void Start()
+    private void UpdatePositions(SimulationData data)
     {
-        timer = timeToUpdate;
-        vehiclePositions = new List<Vector3>();
-        pedestrianPositions = new List<Vector3>();
-        cellPositions = new List<Vector3>();
-        activeCars = new List<GameObject>();
+        if (vehiclePositions == null) vehiclePositions = new List<Vector3>();
+        if (pedestrianPositions == null) pedestrianPositions = new List<Vector3>();
+        if (cellPositions == null) cellPositions = new List<Vector3>();
 
-        // Selección de varios GameObjects para ser activos
-        foreach (string carName in carNames)
+        vehiclePositions.Clear();
+        pedestrianPositions.Clear();
+        cellPositions.Clear();
+
+        foreach (Point pos in data.vehiculos)
         {
-            GameObject car = GameObject.Find(carName);
-            if (car != null)
-            {
-                activeCars.Add(car);
-                Debug.Log($"Car added to active list: {carName}");
-            }
-            else
-            {
-                Debug.LogWarning($"GameObject with name {carName} not found in the scene!");
-            }
+            Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
+            vehiclePositions.Add(myP);
         }
 
-        if (activeCars.Count == 0)
+        foreach (Point pos in data.peatones)
         {
-            Debug.LogError("No active cars found in the scene!");
-        }
-        else
-        {
-            Debug.Log($"{activeCars.Count} cars added to active list.");
+            Vector3 myP = new Vector3(pos.x, 0.5f, pos.z);
+            pedestrianPositions.Add(myP);
         }
 
-        StartCoroutine(RequestPositions());
+        foreach (Point pos in data.celdas)
+        {
+            Vector3 myP = new Vector3(pos.x, 0.0f, pos.z);
+            cellPositions.Add(myP);
+        }
     }
 
-    void Update()
+    private void UpdateVehicles()
+    {
+        // Si hay menos vehículos activos que posiciones, crear nuevos
+        while (activeCars.Count < vehiclePositions.Count)
+        {
+            GameObject newCar = Instantiate(GetRandomCarPrefab());
+            newCar.transform.localScale = new Vector3(0.08f, 0.08f, 0.08f); // Establece la escala del carro
+            activeCars.Add(newCar);
+        }
+
+        // Si hay más vehículos activos que posiciones, destruir los extras
+        while (activeCars.Count > vehiclePositions.Count)
+        {
+            GameObject carToRemove = activeCars[activeCars.Count - 1];
+            activeCars.RemoveAt(activeCars.Count - 1);
+            Destroy(carToRemove);
+        }
+
+        // Actualizar las posiciones de los vehículos activos
+        for (int i = 0; i < activeCars.Count; i++)
+        {
+            activeCars[i].transform.position = vehiclePositions[i];
+        }
+    }
+
+    private GameObject GetRandomCarPrefab()
+    {
+        if (carPrefabs.Count == 0)
+        {
+            Debug.LogError("No car prefabs assigned in the inspector!");
+            return null;
+        }
+
+        int randomIndex = Random.Range(0, carPrefabs.Count);
+        return carPrefabs[randomIndex];
+    }
+
+    private void Update()
     {
         timer -= Time.deltaTime;
         if (timer <= 0)
