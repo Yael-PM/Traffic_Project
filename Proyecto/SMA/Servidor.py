@@ -48,43 +48,41 @@ model_params = {
 modelo_trafico = ModeloTrafico(**model_params)
 @app.route('/datos', methods=['GET', 'POST'])
 def get_positions():
-    # Avanzar un paso en la simulación
-    modelo_trafico.step()
+    try:
+        modelo_trafico.step()
+        posiciones_celdas = []
+        posiciones_peatones = []
+        posiciones_vehiculos = []
 
-    # Categorizar las posiciones según el tipo de agente
-    posiciones_celdas = []
-    posiciones_peatones = []
-    posiciones_vehiculos = []
+        for agente in modelo_trafico.schedule.agents:
+            if isinstance(agente, Celda) and agente.pos is not None:
+                x, z = agente.pos
+                posiciones_celdas.append({"x": x, "z": z})
+            elif isinstance(agente, Peaton) and agente.pos is not None:
+                x, z = agente.pos
+                posiciones_peatones.append({"x": x, "z": z})
+            elif isinstance(agente, Vehiculo) and agente.pos is not None:
+                x, z = agente.pos
+                posiciones_vehiculos.append({"x": x, "z": z})
 
-    # Recolectar datos de agentes
-    for agente in modelo_trafico.schedule.agents:
-        if isinstance(agente, Celda):
-            x, z = agente.pos
-            posiciones_celdas.append({"x": x, "z": z})
-        elif isinstance(agente, Peaton):
-            x, z = agente.pos
-            posiciones_peatones.append({"x": x, "z": z})
-        elif isinstance(agente, Vehiculo):
-            x, z = agente.pos
-            posiciones_vehiculos.append({"x": x, "z": z})
 
-    # Separar las celdas transitables, intransitables, banquetas y estacionamientos
-    celdas_transitables = [{"x": x, "z": y} for direction, celdas in modelo_trafico.transitables.items() for x, y in celdas]
-    celdas_intransitables = [{"x": x, "z": y} for x, y in modelo_trafico.intransitables]
-    celdas_banquetas = [{"x": x, "z": y} for x, y in modelo_trafico.banquetas]
-    celdas_estacionamientos = [{"x": x, "z": y} for x, y in modelo_trafico.estacionamientos.values()]
+        celdas_transitables = [{"x": x, "z": y} for direction, celdas in modelo_trafico.transitables.items() for x, y in celdas]
+        celdas_intransitables = [{"x": x, "z": y} for x, y in modelo_trafico.intransitables]
+        celdas_banquetas = [{"x": x, "z": y} for x, y in modelo_trafico.banquetas]
+        celdas_estacionamientos = [{"x": x, "z": y} for x, y in modelo_trafico.estacionamientos.values()]
 
-    # Devolver el JSON con las posiciones categorizadas y celdas
-    return jsonify({
-        "celdas": {
-            "transitables": celdas_transitables,
-            "intransitables": celdas_intransitables,
-            "banquetas": celdas_banquetas,
-            "estacionamientos": celdas_estacionamientos
-        },
-        "peatones": posiciones_peatones,
-        "vehiculos": posiciones_vehiculos
-    })
+        return jsonify({
+            "celdas": {
+                "transitables": celdas_transitables,
+                "intransitables": celdas_intransitables,
+                "banquetas": celdas_banquetas,
+                "estacionamientos": celdas_estacionamientos
+            },
+            "peatones": posiciones_peatones,
+            "vehiculos": posiciones_vehiculos
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 
 if __name__ == '__main__':
