@@ -1,0 +1,58 @@
+Licencias de Uso para Assets Usados
+
+**Modern Building Set**
+
+License agreement
+Standard Unity Asset Store EULA
+License type Extension Asset
+File size 1.3 MB
+Latest version 1.0
+Latest release date Aug 5, 2024
+Original Unity version 2022.3.22 or higher
+https://assetstore.unity.com/packages/3d/environments/urban/modern-building-set-291640
+
+
+**Modular Lowpoly Streets (Free)**
+
+License agreement Standard Unity Asset Store EULA
+License type Extension Asset
+File size 168.3 MB
+Latest version 1.0
+Latest release date Apr 7, 2021
+Original Unity version 2020.1.12 or higher
+Support Visit site
+https://assetstore.unity.com/packages/3d/environments/urban/modular-lowpoly-streets-free-192094
+
+**Parking Garage - Complete**
+
+License agreement Standard Unity Asset Store EULA
+License type Extension Asset
+File size 30.9 MB
+Latest version 1.0
+Latest release date May 28, 2020
+Original Unity version 2019.2.19 or higher
+Support Visit site
+https://assetstore.unity.com/packages/3d/environments/urban/parking-garage-complete-104909
+
+**CITY package**
+
+License agreement Standard Unity Asset Store EULA
+License type Extension Asset
+File size 9.7 MB
+Latest version 1.0
+Latest release date Apr 22, 2024
+Original Unity version 2017.4.0 or higher
+Support Visit site
+https://assetstore.unity.com/packages/3d/environments/urban/city-package-107224
+
+**SimplePoly City - Low Poly Assets**
+
+License agreement
+Standard Unity Asset Store EULA
+License type Extension Asset
+File size 3.4 MB
+Latest version 1.2.3
+Latest release date Apr 6, 2017
+Original Unity version 5.1.0 or higher
+Support Visit site
+https://assetstore.unity.com/packages/3d/environments/simplepoly-city-low-poly-assets-58899
